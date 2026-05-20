@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { 
   Users, Banknote, ShieldCheck, HelpCircle, ArrowUpRight, TrendingUp, Sparkles, 
-  Settings, Send, Search, Bell, Filter, Edit3, Save, X, ThumbsUp, ThumbsDown, Check, RefreshCw
+  Settings, Send, Search, Bell, Filter, Edit3, Save, X, ThumbsUp, ThumbsDown, Check, RefreshCw,
+  CreditCard, Key
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { NIGERIAN_STATES } from "../data";
@@ -17,6 +18,8 @@ interface AdminDashboardProps {
   grantConfigs: GrantConfig[];
   onUpdateGrantConfigs: (updatedConfigs: GrantConfig[]) => void;
   onBroadcastNotification: (title: string, message: string, role: string) => void;
+  paystackPublicKey?: string;
+  onUpdatePaystackPublicKey?: (key: string) => void;
 }
 
 export default function AdminDashboard({
@@ -28,7 +31,9 @@ export default function AdminDashboard({
   onRejectWithdrawal,
   grantConfigs,
   onUpdateGrantConfigs,
-  onBroadcastNotification
+  onBroadcastNotification,
+  paystackPublicKey = "",
+  onUpdatePaystackPublicKey = () => {}
 }: AdminDashboardProps) {
 
   // Navigation tabs inside Admin
@@ -43,6 +48,14 @@ export default function AdminDashboard({
   const [editingConfigId, setEditingConfigId] = useState<string | null>(null);
   const [editAmt, setEditAmt] = useState<number>(0);
   const [editFee, setEditFee] = useState<number>(0);
+
+  // Paystack Backoffice Config editing states
+  const [localPubKey, setLocalPubKey] = useState(paystackPublicKey);
+  const [keySaveSuccess, setKeySaveSuccess] = useState(false);
+
+  React.useEffect(() => {
+    setLocalPubKey(paystackPublicKey);
+  }, [paystackPublicKey]);
 
   // Broadcast Notification Form
   const [bcTitle, setBcTitle] = useState("");
@@ -542,6 +555,92 @@ export default function AdminDashboard({
                   })}
                 </div>
 
+              </div>
+
+              {/* PAYMENT GATEWAY CONFIGURATION */}
+              <div id="payment-gateway-config" className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6 mt-6">
+                <div className="border-b border-slate-850 pb-4">
+                  <div className="flex items-center space-x-2.5">
+                    <div className="p-2 bg-[#008751]/10 text-emerald-400 rounded-xl border border-emerald-500/20">
+                      <Key className="w-5 h-5 text-emerald-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-white uppercase tracking-wider font-mono">Nigerian Payment Gateway Settlement</h3>
+                      <p className="text-xs text-slate-400">Integrate real online checkouts via the corporate Paystack SDK.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 font-sans text-xs">
+                  <p className="text-slate-400 leading-relaxed">
+                    By submitting your secure Paystack API keys, you link the citizen verification fee payment portal directly to your company settling account. Citizens will be prompted with the official inline checkout dialog powered by Paystack POP technology.
+                  </p>
+
+                  <div className="bg-slate-950 border border-slate-850 p-5 rounded-2xl space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-xs gap-1">
+                        <label className="font-extrabold text-[#008751] uppercase tracking-wider font-mono text-[10px]">
+                          Paystack Public Key (Live or Test)
+                        </label>
+                        <span className="text-[10px] text-slate-500 font-sans italic">
+                          Begins with <code className="bg-slate-900 px-1.5 py-0.5 rounded text-amber-500 font-mono">pk_test_</code> or <code className="bg-slate-900 px-1.5 py-0.5 rounded text-emerald-500 font-mono">pk_live_</code>
+                        </span>
+                      </div>
+                      
+                      <div className="flex gap-2.5">
+                        <div className="relative flex-grow">
+                          <input
+                            type="text"
+                            value={localPubKey}
+                            onChange={(e) => {
+                              setLocalPubKey(e.target.value.trim());
+                              setKeySaveSuccess(false);
+                            }}
+                            placeholder="e.g. pk_test_23df45..."
+                            className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-white font-mono text-xs focus:outline-none focus:border-[#008751] focus:bg-slate-950 shadow-inner"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onUpdatePaystackPublicKey(localPubKey);
+                            setKeySaveSuccess(true);
+                            setTimeout(() => setKeySaveSuccess(false), 3000);
+                          }}
+                          className="flex items-center space-x-2 bg-[#008751] hover:bg-[#007345] text-white font-extrabold px-6 py-3 rounded-xl cursor-pointer shadow-sm transition-all text-xs uppercase tracking-wide shrink-0"
+                        >
+                          <Save className="w-4 h-4 text-white" />
+                          <span>Save Key</span>
+                        </button>
+                      </div>
+
+                      {keySaveSuccess && (
+                        <p className="text-[10.5px] text-emerald-400 font-bold font-mono animate-pulse pt-1">
+                          ✓ Key saved and updated across all online portals successfully!
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/40 border border-slate-850 p-4 rounded-xl text-[11px] text-slate-400 leading-relaxed space-y-1.5 font-sans">
+                    <p className="font-bold text-white uppercase text-[10px] tracking-wider font-mono mb-1 text-slate-300">
+                      💡 Operational Instructions:
+                    </p>
+                    <p>
+                      1. Create your developer account or log in at <a href="https://dashboard.paystack.com" target="_blank" rel="noopener noreferrer" className="text-[#008751] font-bold hover:underline">dashboard.paystack.com</a>.
+                    </p>
+                    <p>
+                      2. Go to <strong className="text-slate-200">Settings</strong> &gt; <strong className="text-slate-200">API Keys &amp; Webhooks</strong> on the sidebar.
+                    </p>
+                    <p>
+                      3. Copy the <strong className="text-emerald-400 font-mono">Public Key</strong> (starting with <code className="text-amber-500">pk_test_</code> for staging/testing or <code className="text-emerald-500">pk_live_</code> for official collections).
+                    </p>
+                    <p>
+                      4. Paste the public key in the field above to go live. Leaving it empty automatically defaults citizens to a pre-activated high-fidelity staging environment.
+                    </p>
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}

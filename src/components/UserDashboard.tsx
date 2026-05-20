@@ -18,6 +18,7 @@ interface UserDashboardProps {
   notifications: AppNotification[];
   onMarkNotificationRead: (notifId: string) => void;
   onNavigate: (view: string) => void;
+  paystackPublicKey?: string;
 }
 
 export default function UserDashboard({
@@ -29,7 +30,8 @@ export default function UserDashboard({
   onAddWithdrawal,
   notifications,
   onMarkNotificationRead,
-  onNavigate
+  onNavigate,
+  paystackPublicKey = ""
 }: UserDashboardProps) {
   
   // Dashboard states
@@ -49,6 +51,115 @@ export default function UserDashboard({
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [latestPaymentRef, setLatestPaymentRef] = useState("");
   const [latestPaymentTime, setLatestPaymentTime] = useState("");
+
+  // Paystack Integration States
+  const [useRealPaystack, setUseRealPaystack] = useState(true);
+  const [paystackCustomKey, setPaystackCustomKey] = useState("");
+  const [paystackError, setPaystackError] = useState<string | null>(null);
+  const [paystackSdkLoaded, setPaystackSdkLoaded] = useState(false);
+
+  // Load Paystack dynamic script
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const existingScript = document.getElementById("paystack-inline-js");
+      if (existingScript) {
+        setPaystackSdkLoaded(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.id = "paystack-inline-js";
+      script.src = "https://js.paystack.co/v1/inline.js";
+      script.async = true;
+      script.onload = () => {
+        setPaystackSdkLoaded(true);
+        console.log("Paystack SDK loaded successfully.");
+      };
+      script.onerror = () => {
+        console.warn("Paystack load blocked. Operating in offline simulation mode.");
+      };
+      document.body.appendChild(script);
+    }
+  }, []);
+
+  // Launch live Paystack popover transaction
+  const handlePaystackWebCheckout = () => {
+    setPaystackError(null);
+    setPaymentLoading(true);
+
+    // Read Key configuration (Custom override > Admin Dashboard Configured > Environment public key > Fallback default test sandbox key)
+    const envKey = (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY;
+    const publicKey = paystackCustomKey.trim() || paystackPublicKey.trim() || envKey || "pk_test_fc8ad45b8813fa2ef69e1507f35443fa92e85740";
+
+    try {
+      if (!(window as any).PaystackPop) {
+        setPaystackError("Paystack SDK is not loaded. Please verify your internet connection or use the offline simulator checkout.");
+        setPaymentLoading(false);
+        return;
+      }
+
+      const handler = (window as any).PaystackPop.setup({
+        key: publicKey,
+        email: currentUser.email || "citizen@goverment-settlement.ng",
+        amount: currentUser.membershipFee * 100, // Paystack works in kobo
+        currency: "NGN",
+        ref: `REF_PAYSTACK_${Math.floor(10000000 + Math.random() * 90000000)}`,
+        callback: function (response: any) {
+          const paymentRef = response.reference || `REF_PS_${Math.floor(10000000 + Math.random() * 90000000)}`;
+          const formattedTime = new Date().toLocaleString("en-NG", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+          });
+
+          setLatestPaymentRef(paymentRef);
+          setLatestPaymentTime(formattedTime);
+
+          const newPayment: Payment = {
+            id: `p-${Date.now()}`,
+            userId: currentUser.id,
+            userFullName: currentUser.fullName,
+            amount: currentUser.membershipFee,
+            paymentType: "card",
+            reference: paymentRef,
+            status: "completed",
+            createdAt: new Date().toISOString()
+          };
+
+          const newMembershipId = `APC-NG-${Math.floor(100000 + Math.random() * 900000)}`;
+          onAddPayment(newPayment);
+
+          const updatedUser: UserType = {
+            ...currentUser,
+            membershipStatus: "paid",
+            membershipId: newMembershipId
+          };
+          onUpdateUser(updatedUser);
+
+          setPaymentLoading(false);
+          setPaymentSuccess(true);
+
+          // Force view return after receipt reading time
+          setTimeout(() => {
+            setActiveTab("overview");
+            setPaymentSuccess(false);
+          }, 5000);
+        },
+        onClose: function () {
+          setPaymentLoading(false);
+          setPaystackError("Payment dismissed by the payer before completion.");
+        }
+      });
+
+      handler.openIframe();
+    } catch (err: any) {
+      console.error("Paystack system failure:", err);
+      setPaystackError(`Gateway failed: ${err?.message || "Invalid setup configuration."}. Try using offline simulator mode below.`);
+      setPaymentLoading(false);
+    }
+  };
 
   // Withdrawal States
   const [wtBank, setWtBank] = useState("");
@@ -1023,37 +1134,64 @@ export default function UserDashboard({
                           <span className="font-black text-[#008751] text-sm">₦{currentUser.membershipFee.toLocaleString()}</span>
                         </div>
                       </div>
-
-                      {/* Payment Method Selector Grid */}
-                      <div className="p-3 bg-slate-50 border-b border-slate-200">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-bold text-[10px] md:text-xs">
-                          {[
-                            { id: "card", label: "Debit Card", icon: CreditCard },
-                            { id: "bank_transfer", label: "Bank Transfer", icon: RefreshCw },
-                            { id: "ussd", label: "USSD Code", icon: Smartphone },
-                            { id: "wallet", label: "Digital Wallet", icon: Award }
-                          ].map((m) => {
-                            const Icon = m.icon;
-                            const selected = paymentMethod === m.id;
-                            return (
-                              <button
-                                key={m.id}
-                                type="button"
-                                onClick={() => setPaymentMethod(m.id as any)}
-                                className={`py-2.5 px-2 flex flex-col sm:flex-row items-center justify-center gap-2 rounded-xl transition-all cursor-pointer border ${
-                                  selected 
-                                    ? "bg-[#008751] text-white border-[#008751] shadow-sm font-extrabold" 
-                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
-                                }`}
-                                style={{ minHeight: "44px" }}
-                              >
-                                <Icon className={`w-3.5 h-3.5 ${selected ? "text-white" : "text-[#008751]"}`} />
-                                <span className="tracking-tight">{m.label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
+                        {/* Active Gateway Selection Toggles */}
+                      <div className="px-6 pt-5 grid grid-cols-2 gap-3 bg-slate-50 border-b border-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => setUseRealPaystack(true)}
+                          className={`pb-3 text-[11px] font-extrabold uppercase tracking-tight font-sans text-center border-b-2 transition-all cursor-pointer ${
+                            useRealPaystack 
+                              ? "border-[#008751] text-[#008751]" 
+                              : "border-transparent text-slate-400 hover:text-slate-650"
+                          }`}
+                        >
+                          ⚡ Paystack Online SDK
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setUseRealPaystack(false)}
+                          className={`pb-3 text-[11px] font-extrabold uppercase tracking-tight font-sans text-center border-b-2 transition-all cursor-pointer ${
+                            !useRealPaystack 
+                              ? "border-[#008751] text-[#008751]" 
+                              : "border-transparent text-slate-400 hover:text-slate-650"
+                          }`}
+                        >
+                          🛠️ Sandbox Simulator
+                        </button>
                       </div>
+
+                      {/* Payment Method Selector Grid - Visible only in Simulator Mode */}
+                      {!useRealPaystack && (
+                        <div className="p-3 bg-slate-50 border-b border-slate-200 animate-fade-in">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-bold text-[10px] md:text-xs">
+                            {[
+                              { id: "card", label: "Debit Card", icon: CreditCard },
+                              { id: "bank_transfer", label: "Bank Transfer", icon: RefreshCw },
+                              { id: "ussd", label: "USSD Code", icon: Smartphone },
+                              { id: "wallet", label: "Digital Wallet", icon: Award }
+                            ].map((m) => {
+                              const Icon = m.icon;
+                              const selected = paymentMethod === m.id;
+                              return (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => setPaymentMethod(m.id as any)}
+                                  className={`py-2.5 px-2 flex flex-col sm:flex-row items-center justify-center gap-2 rounded-xl transition-all cursor-pointer border ${
+                                    selected 
+                                      ? "bg-[#008751] text-white border-[#008751] shadow-sm font-extrabold" 
+                                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
+                                  }`}
+                                  style={{ minHeight: "44px" }}
+                                >
+                                  <Icon className={`w-3.5 h-3.5 ${selected ? "text-white" : "text-[#008751]"}`} />
+                                  <span className="tracking-tight">{m.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Dynamic Gateway Views inside portal */}
                       <div className="p-6 sm:p-8 text-xs font-sans bg-white">
@@ -1096,7 +1234,7 @@ export default function UserDashboard({
 
                               <div className="flex justify-between">
                                 <span className="text-slate-400">Payment channel:</span>
-                                <span className="text-slate-800 uppercase font-bold">{paymentMethod.replace("_", " ")} Gateway</span>
+                                <span className="text-slate-800 uppercase font-bold">{useRealPaystack ? "Paystack SDK Gateway" : `${paymentMethod.replace("_", " ")} Simulator`}</span>
                               </div>
 
                               <div className="flex justify-between">
@@ -1114,7 +1252,145 @@ export default function UserDashboard({
                               ⚠️ Your membership card is ready. Secure system is returning you in a moment to complete automatic activation...
                             </p>
                           </div>
+                        ) : useRealPaystack ? (
+                          /* REAL INTERACTIVE PAYSTACK CHECKOUT GATEWAY */
+                          <div className="space-y-6 text-left max-w-md mx-auto py-2 font-sans animate-fade-in">
+                            <div className="bg-emerald-500/[0.02] border border-emerald-500/10 rounded-2xl p-5 space-y-4">
+                              <div className="flex items-start space-x-3">
+                                <div className="p-2.5 bg-[#008751]/10 text-emerald-600 rounded-xl border border-emerald-500/20 mt-0.5 shrink-0">
+                                  <ShieldCheck className="w-5 h-5 text-[#008751]" />
+                                </div>
+                                <div className="space-y-1">
+                                  <h4 className="font-extrabold text-slate-900 uppercase text-xs tracking-tight">Direct Paystack Client Settlement</h4>
+                                  <p className="text-[11px] text-slate-500 leading-normal">
+                                    Initiates the official secure checkout widget. Paystack allows cleared settlements through multiple methods: MasterCard, Visa, USSD, and secure commercial bank channels.
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="border-t border-slate-150 pt-4 space-y-4 font-sans">
+                                <div>
+                                  <label className="block text-[9px] text-slate-500 font-bold uppercase font-mono mb-1">
+                                    Integration Diagnostics
+                                  </label>
+                                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[10px] space-y-2 font-mono">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-slate-400">Paystack SDK State:</span>
+                                      {paystackSdkLoaded ? (
+                                        <span className="bg-emerald-100 text-[#008751] px-1.5 py-0.5 font-bold rounded text-[8.5px] border border-emerald-200">
+                                          ✓ ACTIVE LOADED
+                                        </span>
+                                      ) : (
+                                        <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 font-bold rounded text-[8.5px] animate-pulse">
+                                          LOADING SDK...
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-slate-400">Backoffice Admin Key:</span>
+                                      {paystackPublicKey ? (
+                                        <span className="bg-emerald-100 text-teal-800 px-1.5 py-0.5 font-bold rounded text-[8.5px] border border-teal-200">
+                                          ✓ SET (SAVED)
+                                        </span>
+                                      ) : (
+                                        <span className="bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded text-[8.5px]">
+                                          NOT CONFIGURED
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-slate-400">Env Variable Key:</span>
+                                      {(import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY ? (
+                                        <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 font-bold rounded text-[8.5px]">
+                                          ✓ DETECTED (API SECURE)
+                                        </span>
+                                      ) : (
+                                        <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 font-bold rounded text-[8.5px]">
+                                          MOCK FALLBACK WORKING
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 mt-1 font-sans">
+                                      <span className="font-semibold text-slate-600 font-mono text-[9px] uppercase">Active Checkout Key:</span>
+                                      <span className="text-[#008751] font-extrabold text-[10px] uppercase">
+                                        {paystackCustomKey.trim() 
+                                          ? "⚡ Temporary Override Key" 
+                                          : paystackPublicKey.trim() 
+                                            ? "🏛️ Saved Admin Platform Key" 
+                                            : (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY 
+                                              ? "🔒 Global Environment Key" 
+                                              : "🧪 Default Sandbox Sandbox Key"}
+                                      </span>
+                                    </div>
+
+                                    <p className="text-[9.5px] text-slate-400 leading-normal font-sans pt-1">
+                                      {paystackCustomKey.trim() 
+                                        ? "Your custom overriding key is loaded for this payment."
+                                        : paystackPublicKey.trim() 
+                                          ? "Checkout will settle into the platform's Admin-configured account." 
+                                          : (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY 
+                                            ? "Checkout will settle through the VITE_PAYSTACK_PUBLIC_KEY env variable." 
+                                            : "No official key is set yet. We are automatically falling back to Paystack's official secure sandbox test environment with zero setup."}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <div className="flex justify-between items-center mb-1">
+                                    <label className="block text-[9.5px] text-slate-600 font-bold uppercase font-mono">
+                                      Temporary Public Key
+                                    </label>
+                                    <span className="text-[8px] text-slate-400 font-sans italic hover:underline cursor-help">
+                                      Optional for Dev sandbox
+                                    </span>
+                                  </div>
+                                  <input
+                                    type="text"
+                                    value={paystackCustomKey}
+                                    onChange={(e) => setPaystackCustomKey(e.target.value.trim())}
+                                    placeholder="e.g. pk_test_..."
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-slate-800 font-mono text-[11px] focus:outline-none focus:border-[#008751] focus:bg-white placeholder-slate-400 shadow-inner"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {paystackError && (
+                              <div className="text-[10px] text-red-600 font-bold leading-relaxed bg-red-50/80 px-3.5 py-2.5 border border-red-200 rounded-xl font-mono">
+                                <p className="font-extrabold uppercase mb-0.5">⚠️ Transact-Error:</p>
+                                <p className="font-normal">{paystackError}</p>
+                              </div>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={handlePaystackWebCheckout}
+                              disabled={paymentLoading}
+                              className="w-full flex items-center justify-center space-x-2 bg-[#008751] hover:bg-[#007345] text-white font-black py-4 rounded-xl disabled:opacity-50 cursor-pointer text-xs uppercase tracking-wider shadow-sm transition-all"
+                            >
+                              {paymentLoading ? (
+                                <span className="flex items-center space-x-2">
+                                  <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                                  <span>Authorizing Paystack Gateway...</span>
+                                </span>
+                              ) : (
+                                <span className="flex items-center space-x-1.5">
+                                  <CreditCard className="w-4 h-4 mr-0.5" />
+                                  <span>Pay ₦{currentUser.membershipFee.toLocaleString()} via Paystack Pop</span>
+                                </span>
+                              )}
+                            </button>
+
+                            <div className="text-center font-mono text-[9px] text-slate-400 uppercase tracking-widest pt-1 flex items-center justify-center space-x-1.5">
+                              <ShieldCheck className="w-3.5 h-3.5 text-[#008751]" />
+                              <span>Secured powered by Paystack POP technology</span>
+                            </div>
+                          </div>
                         ) : (
+                          /* SIMULATED GATEWAYS */
                           <form onSubmit={handleProcessPayment} className="space-y-5 text-left bg-white text-xs font-sans animate-fade-in">
                             
                             {/* CARD SUBMETHOD */}
@@ -1272,7 +1548,7 @@ export default function UserDashboard({
                                     value={mobileWalletNumber}
                                     onChange={(e) => setMobileWalletNumber(e.target.value.replace(/\D/g, ""))}
                                     placeholder="e.g. 08067890123"
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-slate-800 focus:outline-none focus:border-[#008751] focus:bg-white font-mono text-sm shadow-inner"
+                                    className="w-full bg-slate-50 border border-[#slate-200] rounded-lg py-2.5 px-3 text-slate-800 focus:outline-none focus:border-[#008751] focus:bg-white font-mono text-sm shadow-inner"
                                   />
                                 </div>
                                 <p className="text-[10px] text-slate-500">A payment push check will be transmitted directly to your mobile wallet provider app.</p>
@@ -1283,7 +1559,7 @@ export default function UserDashboard({
                             <button
                               type="submit"
                               disabled={paymentLoading}
-                              className="w-full mt-4 flex items-center justify-center space-x-2 bg-[#008751] hover:bg-[#007345] text-white font-black py-3 rounded-xl disabled:opacity-50 cursor-pointer text-xs uppercase tracking-wide shadow-sm"
+                              className="w-full mt-4 flex items-center justify-center space-x-2 bg-[#008751] hover:bg-[#007345] text-white font-black py-3.5 rounded-xl disabled:opacity-50 cursor-pointer text-xs uppercase tracking-wide shadow-sm"
                             >
                               {paymentLoading ? (
                                 <span className="flex items-center space-x-2">
@@ -1305,13 +1581,14 @@ export default function UserDashboard({
                           </form>
                         )}
                         
-                      </div> 
                       </div>
+                    </div>
 
-                    )}
+                  )}
 
                 </motion.div>
               )}
+
 
               {/* TAB 3: SECURE WITHDRAWAL DRAWER PORTAL */}
               {activeTab === "withdrawal" && (

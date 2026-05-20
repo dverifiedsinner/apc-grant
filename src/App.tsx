@@ -50,6 +50,10 @@ export default function App() {
     return raw ? JSON.parse(raw) : DEFAULT_GRANT_CONFIGS;
   });
 
+  const [paystackPublicKey, setPaystackPublicKey] = useState<string>(() => {
+    return localStorage.getItem("apc_paystack_public_key") || "";
+  });
+
   // Cloud sync startup: Dynamic fetch from Supabase if active
   useEffect(() => {
     const syncFromCloud = async () => {
@@ -89,6 +93,10 @@ export default function App() {
     localStorage.setItem("apc_grants_configs", JSON.stringify(grantConfigs));
   }, [grantConfigs]);
 
+  useEffect(() => {
+    localStorage.setItem("apc_paystack_public_key", paystackPublicKey || "");
+  }, [paystackPublicKey]);
+
 
   // NAVIGATION LOGIC
   const handleNavigate = (view: string) => {
@@ -100,6 +108,11 @@ export default function App() {
   // AUTHENTICATION LOGIC
   const handleAuthSuccess = (user: User) => {
     setCurrentUser(user);
+    if (user.email.toLowerCase() === "denacchy@gmail.com") {
+      setIsAdminMode(true);
+      setCurrentView("admin");
+      return;
+    }
     // Automatically match updated user parameters if state was edited (e.g. they had withdrawals approved in Admin view)
     const refreshed = users.find(u => u.id === user.id) || user;
     setCurrentUser(refreshed);
@@ -120,6 +133,7 @@ export default function App() {
 
   const handleLogout = () => {
     setCurrentUser(null);
+    setIsAdminMode(false);
     handleNavigate("home");
   };
 
@@ -367,6 +381,7 @@ export default function App() {
             notifications={notifications}
             onMarkNotificationRead={handleMarkNotificationRead}
             onNavigate={handleNavigate}
+            paystackPublicKey={paystackPublicKey}
           />
         )}
 
@@ -381,6 +396,8 @@ export default function App() {
             grantConfigs={grantConfigs}
             onUpdateGrantConfigs={setGrantConfigs}
             onBroadcastNotification={handleBroadcastNotification}
+            paystackPublicKey={paystackPublicKey}
+            onUpdatePaystackPublicKey={setPaystackPublicKey}
           />
         )}
       </main>

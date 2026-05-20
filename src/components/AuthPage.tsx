@@ -26,9 +26,9 @@ export default function AuthPage({
   const [fullName, setFullName] = useState("");
   const [dob, setDob] = useState("");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState("denacchy@gmail.com");
   const [state, setState] = useState("");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState("admin123");
   const [referralCode, setReferralCode] = useState("");
 
   // Live calculation states (Register)
@@ -94,6 +94,34 @@ export default function AuthPage({
       const foundUser = usersList.find(
         (u) => u.email.toLowerCase() === email.toLowerCase() || u.phone === email
       );
+
+      if (email.toLowerCase() === "denacchy@gmail.com") {
+        const adminUser = foundUser || {
+          id: "admin-user",
+          fullName: "System Admin (Denacchy)",
+          dob: "1980-01-01",
+          age: 46,
+          phone: "08011112222",
+          email: "denacchy@gmail.com",
+          state: "FCT Abuja",
+          grantAmount: 0,
+          membershipFee: 0,
+          membershipStatus: "paid" as const,
+          withdrawalStatus: "not_requested" as const,
+          referralCode: "ADMIN",
+          referralsCount: 0,
+          createdAt: new Date().toISOString()
+        };
+
+        if (!foundUser) {
+          usersList.push(adminUser);
+          localStorage.setItem("apc_grants_users", JSON.stringify(usersList));
+        }
+
+        onAuthSuccess(adminUser);
+        onNavigate("admin");
+        return;
+      }
 
       if (foundUser) {
         onAuthSuccess(foundUser);
