@@ -509,7 +509,7 @@ export default function UserDashboard({
       const imgH = 185;
 
       if (currentUser.faceVerificationImage) {
-        const img = new Image();
+        const img = new window.Image();
         img.src = currentUser.faceVerificationImage;
         await new Promise<void>((resolve) => {
           img.onload = () => {
