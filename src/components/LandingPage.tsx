@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { FAQ_ITEMS, TESTIMONIALS, LIVE_FEED_INITIAL, NIGERIAN_STATES } from "../data";
+import APCLogo from "./APCLogo";
 
 interface LandingPageProps {
   onNavigate: (view: string) => void;
@@ -110,9 +111,15 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
             
             {/* Left Content Column */}
             <div className="lg:col-span-7 text-left space-y-6">
-              <div className="inline-flex items-center space-x-2 bg-white px-3.5 py-1.5 rounded-full border border-[#008751]/25 text-xs text-[#008751] font-mono shadow-sm">
-                <CheckCircle2 className="w-4 h-4 text-[#008751] animate-pulse" />
-                <span>OFFICIAL EMPOWERMENT DECREE: EM-2026-NGR</span>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <APCLogo className="w-16 h-16 shadow-lg shrink-0" />
+                <div className="space-y-1.5">
+                  <div className="inline-flex items-center space-x-2 bg-white px-3.5 py-1.5 rounded-full border border-[#008751]/25 text-xs text-[#008751] font-mono shadow-sm">
+                    <CheckCircle2 className="w-4 h-4 text-[#008751] animate-pulse" />
+                    <span>OFFICIAL EMPOWERMENT DECREE: EM-2026-NGR</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-mono tracking-wider ml-1">ALL PROGRESSIVES CONGRESS • FEDERAL SECRETARIAT</p>
+                </div>
               </div>
               
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-tight">

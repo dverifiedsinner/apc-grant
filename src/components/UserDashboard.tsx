@@ -2,11 +2,12 @@ import React, { useState, useEffect } from "react";
 import { 
   Sparkles, ShieldCheck, ShieldAlert, Award, Copy, CheckCircle2, User, Banknote, 
   CreditCard, RefreshCw, Send, ArrowUpRight, TrendingUp, Bell, Smartphone, Star, FileText, Download, QrCode,
-  Camera, Fingerprint, Check
+  Camera, Fingerprint, Check, Upload, Image, Eye
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { NIGERIAN_BANKS } from "../data";
 import { User as UserType, Payment, Withdrawal, AppNotification } from "../types";
+import APCLogo from "./APCLogo";
 
 interface UserDashboardProps {
   currentUser: UserType;
@@ -187,6 +188,404 @@ export default function UserDashboard({
     navigator.clipboard.writeText(currentUser.referralCode);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  // CARD PASSPORT PHOTO STATES & HANDLERS
+  const [idCameraActive, setIdCameraActive] = useState(false);
+  const [idCameraStream, setIdCameraStream] = useState<MediaStream | null>(null);
+  const [showPhotoModifier, setShowPhotoModifier] = useState(false);
+  const [idPhotoScanning, setIdPhotoScanning] = useState(false);
+
+  const AVATAR_PRESETS = [
+    {
+      name: "Strategic Vanguard",
+      url: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" fill="none"><rect width="100" height="120" fill="%230F172A"/><circle cx="50" cy="45" r="22" fill="%23008751"/><ellipse cx="50" cy="100" rx="35" ry="25" fill="%23D10000"/><circle cx="50" cy="42" r="16" fill="%23FFD3B6"/><ellipse cx="50" cy="98" rx="28" ry="18" fill="%23F8FAFC"/><rect x="42" y="80" width="16" height="24" fill="%23FFD3B6"/></svg>`
+    },
+    {
+      name: "Democratic Leader",
+      url: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" fill="none"><rect width="100" height="120" fill="%230B0F19"/><circle cx="50" cy="45" r="22" fill="%23D10000"/><ellipse cx="50" cy="100" rx="35" ry="25" fill="%23008751"/><circle cx="50" cy="42" r="16" fill="%23E2E8F0"/><ellipse cx="50" cy="98" rx="28" ry="18" fill="%2338BDF8"/><rect x="42" y="80" width="16" height="24" fill="%23E2E8F0"/></svg>`
+    },
+    {
+      name: "Civic Planner",
+      url: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" fill="none"><rect width="100" height="120" fill="%231E293B"/><circle cx="50" cy="45" r="22" fill="%23008751"/><ellipse cx="50" cy="100" rx="35" ry="25" fill="%23D10000"/><circle cx="50" cy="42" r="15" fill="%23E2E8F0"/><path d="M 38 43 L 50 25 L 62 43 Z" fill="%230F172A"/><ellipse cx="50" cy="98" rx="28" ry="18" fill="%23F1F5F9"/></svg>`
+    },
+    {
+      name: "National Vanguard",
+      url: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" fill="none"><rect width="100" height="120" fill="%23334155"/><circle cx="50" cy="42" r="16" fill="%23FFD3B6"/><ellipse cx="50" cy="96" rx="30" ry="20" fill="%231E40AF"/><path d="M 32 30 C 32 20, 68 20, 68 30 Z" fill="%231E293B"/></svg>`
+    }
+  ];
+
+  const startIdCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+      setIdCameraStream(stream);
+      setIdCameraActive(true);
+    } catch (err) {
+      console.error("ID card camera access failed:", err);
+      // Fallback
+      setIdCameraActive(true);
+    }
+  };
+
+  const stopIdCamera = () => {
+    if (idCameraStream) {
+      idCameraStream.getTracks().forEach(track => track.stop());
+      setIdCameraStream(null);
+    }
+    setIdCameraActive(false);
+  };
+
+  const captureIdPhoto = () => {
+    setIdPhotoScanning(true);
+    setTimeout(() => {
+      // Create offscreen canvas for webcam capture size
+      const snapCanvas = document.createElement("canvas");
+      snapCanvas.width = 300;
+      snapCanvas.height = 360;
+      const snapCtx = snapCanvas.getContext("2d");
+      
+      if (snapCtx) {
+        // Find existing video tag if webcam was successfully mounted
+        const videoElement = document.getElementById("id-webcam-video") as HTMLVideoElement | null;
+        if (videoElement && idCameraStream) {
+          try {
+            snapCtx.drawImage(videoElement, 0, 0, 300, 360);
+          } catch {
+            drawBeautifulWebcamFallback(snapCtx);
+          }
+        } else {
+          drawBeautifulWebcamFallback(snapCtx);
+        }
+        
+        const capturedBase64 = snapCanvas.toDataURL("image/png");
+        onUpdateUser({
+          ...currentUser,
+          faceVerificationImage: capturedBase64
+        });
+      }
+
+      setIdPhotoScanning(false);
+      stopIdCamera();
+    }, 1500);
+  };
+
+  const drawBeautifulWebcamFallback = (ctx: CanvasRenderingContext2D) => {
+    const w = 300;
+    const h = 360;
+    // Draw pretty background
+    const gr = ctx.createLinearGradient(0, 0, 0, h);
+    gr.addColorStop(0, "#008751");
+    gr.addColorStop(1, "#0A0F1D");
+    ctx.fillStyle = gr;
+    ctx.fillRect(0, 0, w, h);
+    
+    // Silhouette outline
+    ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+    ctx.beginPath();
+    ctx.arc(w / 2, h * 0.35, w * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(w / 2, h + 20, w * 0.45, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    // Verification security stamp watermark
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(20, 20, w - 40, h - 40);
+  };
+
+  const downloadIDCardPNG = async () => {
+    setCardDownloading(true);
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 640;
+      canvas.height = 400;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      // 1. Draw rounded card background slate colors
+      ctx.fillStyle = "#0B0F19";
+      ctx.fillRect(0, 0, 640, 400);
+
+      // Gradient glow
+      const bgGrad = ctx.createLinearGradient(0, 0, 640, 400);
+      bgGrad.addColorStop(0, "rgba(0, 135, 81, 0.18)"); // Green accent
+      bgGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.01)");
+      bgGrad.addColorStop(1, "rgba(209, 0, 0, 0.12)"); // Red accent
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, 640, 400);
+
+      // Grid background pattern
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 640; i += 40) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, 400);
+        ctx.stroke();
+      }
+
+      // 2. Solid Side Bar Accent
+      ctx.fillStyle = "#008751";
+      ctx.fillRect(0, 0, 14, 400);
+
+      // 3. Draw APC Logo in the header
+      const logoX = 55;
+      const logoY = 55;
+      const logoR = 26;
+      
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(logoX, logoY, logoR, 0, Math.PI * 2);
+      ctx.clip();
+      
+      // Left vertical Green slice
+      ctx.fillStyle = "#008751";
+      ctx.fillRect(logoX - logoR, logoY - logoR, logoR, logoR * 1.3);
+      // Middle vertical White slice
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(logoX, logoY - logoR, logoR * 0.45, logoR * 1.3);
+      // Right vertical Blue slice
+      ctx.fillStyle = "#00ADEF";
+      ctx.fillRect(logoX + logoR * 0.45, logoY - logoR, logoR * 0.65, logoR * 1.3);
+      // Lower Red banner
+      ctx.fillStyle = "#D10000";
+      ctx.fillRect(logoX - logoR, logoY + logoR * 0.3, logoR * 2, logoR * 0.85);
+      
+      // Text "APC"
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 12px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("APC", logoX, logoY + logoR * 0.8);
+
+      // Broom bunch
+      ctx.strokeStyle = "#8B5A2B";
+      ctx.lineWidth = 1.4;
+      ctx.fillStyle = "#D10000";
+      ctx.beginPath();
+      ctx.arc(logoX, logoY - 2, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.beginPath();
+      ctx.moveTo(logoX, logoY + 4);
+      ctx.lineTo(logoX - 8, logoY - 14);
+      ctx.moveTo(logoX, logoY + 4);
+      ctx.lineTo(logoX, logoY - 16);
+      ctx.moveTo(logoX, logoY + 4);
+      ctx.lineTo(logoX + 8, logoY - 14);
+      ctx.stroke();
+
+      ctx.restore();
+
+      // Logo white trim
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(logoX, logoY, logoR, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 4. Upper Header Placement
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "900 15px system-ui, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("ALL PROGRESSIVES CONGRESS", 96, 47);
+
+      ctx.fillStyle = "#94A3B8";
+      ctx.font = "bold 9px monospace";
+      ctx.fillText("NATIONAL EMPOWERMENT REGISTER • CIVIC REGISTERED MEMBER", 96, 66);
+
+      // Top Badge
+      ctx.fillStyle = "rgba(0, 135, 81, 0.15)";
+      ctx.strokeStyle = "rgba(0, 135, 81, 0.4)";
+      ctx.lineWidth = 1;
+      const bX = 475;
+      const bY = 32;
+      const bW = 125;
+      const bH = 28;
+      const bR = 6;
+      ctx.beginPath();
+      ctx.moveTo(bX + bR, bY);
+      ctx.lineTo(bX + bW - bR, bY);
+      ctx.quadraticCurveTo(bX + bW, bY, bX + bW, bY + bR);
+      ctx.lineTo(bX + bW, bY + bH - bR);
+      ctx.quadraticCurveTo(bX + bW, bY + bH, bX + bW - bR, bY + bH);
+      ctx.lineTo(bX + bR, bY + bH);
+      ctx.quadraticCurveTo(bX, bY + bH, bX, bY + bH - bR);
+      ctx.lineTo(bX, bY + bR);
+      ctx.quadraticCurveTo(bX, bY, bX + bR, bY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#10B981";
+      ctx.font = "900 8.5px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("VERIFIED CITIZEN", bX + bW / 2, bY + 17);
+
+      // Horizontal line divider
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(35, 95);
+      ctx.lineTo(605, 95);
+      ctx.stroke();
+
+      // 5. User Profiles Row Draws
+      const textX = 215;
+      const textY = 135;
+      const gapY = 44;
+
+      const profileParams = [
+        { title: "CITIZEN FULL NAME", data: currentUser.fullName.toUpperCase(), hue: "#FFFFFF", style: "bold 13px system-ui, sans-serif" },
+        { title: "MEMBERSHIP CARD ID", data: currentUser.membershipId || "APC-NG-000000", hue: "#10B981", style: "bold 13px monospace" },
+        { title: "COHORT AUDIT / STATE", data: `${currentUser.age} YEARS OLD / ${currentUser.state.toUpperCase()} STATE`, hue: "#CBD5E1", style: "bold 11px system-ui, sans-serif" },
+        { title: "PLATFORM INTEGRITY STATUS", data: "APPROVED SECURITY RECORD • NIMC CHECK PASSED", hue: "#94A3B8", style: "8px monospace" }
+      ];
+
+      profileParams.forEach((item, index) => {
+        ctx.textAlign = "left";
+        ctx.fillStyle = "rgba(148, 163, 184, 0.75)";
+        ctx.font = "bold 7.5px monospace";
+        ctx.fillText(item.title, textX, textY + index * gapY);
+
+        ctx.fillStyle = item.hue;
+        ctx.font = item.style;
+        ctx.fillText(item.data, textX, textY + index * gapY + 17);
+      });
+
+      // 6. QR Code Draws
+      const sz = 105;
+      const qX = 490;
+      const qY = 135;
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(qX, qY, sz, sz);
+      
+      ctx.fillStyle = "#0F172A";
+      const drawFinder = (px: number, py: number) => {
+        ctx.fillRect(px, py, 28, 28);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(px + 4, py + 4, 20, 20);
+        ctx.fillStyle = "#0F172A";
+        ctx.fillRect(px + 8, py + 8, 12, 12);
+      };
+
+      drawFinder(qX + 6, qY + 6);
+      drawFinder(qX + 71, qY + 6);
+      drawFinder(qX + 6, qY + 71);
+
+      ctx.fillStyle = "#0F172A";
+      for (let r = 0; r < 21; r++) {
+        for (let c = 0; c < 21; c++) {
+          if ((r < 7 && c < 7) || (r < 7 && c > 13) || (r > 13 && c < 7)) continue;
+          const seed = Math.sin(r * 12.9 + c * 78.2) * 43758;
+          if ((seed - Math.floor(seed)) > 0.44) {
+            ctx.fillRect(qX + 6 + c * 4.4, qY + 6 + r * 4.4, 4.4, 4.4);
+          }
+        }
+      }
+
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(qX + 6, qY + 93, 93, 9);
+      ctx.fillStyle = "#018751";
+      ctx.font = "900 6.5px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("APC SCAN AUDIT", qX + 105 / 2, qY + 100);
+
+      // 7. Dark Bottom Secure Base Tape
+      ctx.fillStyle = "#111827";
+      ctx.fillRect(15, 360, 610, 40);
+      ctx.fillStyle = "#D10000"; // bottom red thin strip
+      ctx.fillRect(15, 396, 610, 4);
+
+      ctx.fillStyle = "#64748B";
+      ctx.font = "8px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("Direct Financial Link • Renewed Hope National Social Intervention Program", 320, 381);
+
+      // 8. Load User Portrait image or silhouette
+      const imgX = 45;
+      const imgY = 125;
+      const imgW = 140;
+      const imgH = 185;
+
+      if (currentUser.faceVerificationImage) {
+        const img = new Image();
+        img.src = currentUser.faceVerificationImage;
+        await new Promise<void>((resolve) => {
+          img.onload = () => {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(imgX, imgY, imgW, imgH);
+            ctx.clip();
+            ctx.drawImage(img, imgX, imgY, imgW, imgH);
+            ctx.restore();
+            resolve();
+          };
+          img.onerror = () => {
+            drawFallbackSilhouette(ctx, imgX, imgY, imgW, imgH);
+            resolve();
+          };
+        });
+      } else {
+        drawFallbackSilhouette(ctx, imgX, imgY, imgW, imgH);
+      }
+
+      // Draw shiny border
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(imgX, imgY, imgW, imgH);
+
+      // Corner Passport stamp
+      ctx.save();
+      ctx.translate(imgX + 22, imgY + 14);
+      ctx.rotate(-Math.PI / 12);
+      ctx.fillStyle = "rgba(16, 185, 129, 0.9)";
+      ctx.fillRect(-22, -8, 44, 14);
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 0.8;
+      ctx.strokeRect(-22, -8, 44, 14);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 6.5px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("PASSPORT", 0, 1.5);
+      ctx.restore();
+
+      // Trigger automatic high quality PNG download
+      const dUrl = canvas.toDataURL("image/png");
+      const aElem = document.createElement("a");
+      aElem.download = `APC_Membership_${currentUser.fullName.replace(/\s+/g, "_")}.png`;
+      aElem.href = dUrl;
+      document.body.appendChild(aElem);
+      aElem.click();
+      document.body.removeChild(aElem);
+    } catch (err) {
+      console.error("ID card image builder error:", err);
+    } finally {
+      setCardDownloading(false);
+    }
+  };
+
+  const drawFallbackSilhouette = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => {
+    const slGrad = ctx.createLinearGradient(x, y, x, y + h);
+    slGrad.addColorStop(0, "#1F2937");
+    slGrad.addColorStop(1, "#111827");
+    ctx.fillStyle = slGrad;
+    ctx.fillRect(x, y, w, h);
+
+    // Silhouette
+    ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
+    ctx.beginPath();
+    ctx.arc(x + w / 2, y + h * 0.38, w * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x + w / 2, y + h + 15, w * 0.45, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+    ctx.font = "bold 7px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("PHOTO PORTRAIT", x + w / 2, y + h - 25);
+    ctx.fillText("NOT ASSIGNED", x + w / 2, y + h - 14);
   };
 
   // NIN Verification lookup simulation
@@ -964,108 +1363,291 @@ export default function UserDashboard({
 
                   {/* DISPLAY MOUNTED APC CARD IF PAID */}
                   {currentUser.membershipStatus === "paid" && (
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-                      
-                      {/* Polished HTML APC Digital Identification card layout */}
-                      <div className="md:col-span-3 bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100 border border-slate-950 rounded-3xl p-6 text-left relative overflow-hidden shadow-lg">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-[#008751]/10 via-transparent to-[#D10000]/10 pointer-events-none" />
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                         
-                        {/* Card Header styling */}
-                        <div className="flex justify-between items-start border-b border-white/10 pb-4 mb-4">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#008751] via-white to-[#D10000] p-0.5">
-                              <div className="w-full h-full bg-slate-950 rounded-full flex items-center justify-center text-[10px] font-black text-[#008751]">
-                                APC
+                        {/* Polished HTML APC Digital Identification card layout */}
+                        <div className="md:col-span-3 bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100 border border-slate-950 rounded-3xl p-6 text-left relative overflow-hidden shadow-lg">
+                          <div className="absolute inset-0 bg-gradient-to-tr from-[#008751]/10 via-transparent to-[#D10000]/10 pointer-events-none" />
+                          
+                          {/* Card Header styling */}
+                          <div className="flex justify-between items-start border-b border-white/10 pb-4 mb-4">
+                            <div className="flex items-center space-x-2">
+                              <APCLogo className="w-9 h-9 shadow-md shrink-0" />
+                              <div>
+                                <h4 className="font-extrabold text-white text-[11px] tracking-tight">NATIONAL EMPOWERMENT NETWORK</h4>
+                                <p className="text-[7.5px] text-slate-400 font-mono">Digital Membership Register</p>
                               </div>
                             </div>
-                            <div>
-                              <h4 className="font-extrabold text-white text-xs tracking-tight">NATIONAL EMPOWERMENT NETWORK</h4>
-                              <p className="text-[8px] text-slate-400 font-mono">Digital Membership Register</p>
-                            </div>
+                            <span className="bg-[#008751]/20 text-[#008751] border border-[#008751]/30 rounded font-mono font-bold text-[8px] px-1.5 py-0.5">
+                              CIVIC MEMBER
+                            </span>
                           </div>
-                          <span className="bg-[#008751]/20 text-[#008751] border border-[#008751]/30 rounded font-mono font-bold text-[8px] px-1.5 py-0.5">
-                            CIVIC MEMBER
-                          </span>
+
+                          {/* Card body representing identity data with portrait photo */}
+                          <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                            
+                            {/* Passport Portrait Area */}
+                            <div className="sm:col-span-4 flex justify-center">
+                              <div className="relative w-24 h-32 bg-slate-900 rounded-xl overflow-hidden border border-white/20 shadow-inner group">
+                                {currentUser.faceVerificationImage ? (
+                                  <img 
+                                    src={currentUser.faceVerificationImage} 
+                                    alt="Citizen Portrait" 
+                                    className="w-full h-full object-cover"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 font-mono text-[8px] text-center p-2 bg-gradient-to-b from-slate-900 to-slate-950">
+                                    <User className="w-8 h-8 text-slate-600 mb-1" />
+                                    <span>NO PHOTO</span>
+                                    <span>ASSIGNED</span>
+                                  </div>
+                                )}
+                                <div className="absolute top-1.5 left-1.5 bg-emerald-600 text-white text-[6px] font-bold uppercase py-0.5 px-1 rounded shadow-sm border border-emerald-500 animate-pulse">
+                                  PASSPORT
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Text Info Columns */}
+                            <div className="sm:col-span-5 space-y-2.5 font-mono text-[9px] text-left">
+                              <div>
+                                <p className="text-[7.5px] text-slate-400">CITIZEN FULL NAME</p>
+                                <p className="text-white font-black tracking-wide uppercase text-[11px] truncate">{currentUser.fullName}</p>
+                              </div>
+
+                              <div>
+                                <p className="text-[7.5px] text-slate-400">MEMBER REGISTER ID</p>
+                                <p className="text-[#008751] font-black text-[11px] tracking-wider">{currentUser.membershipId}</p>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <div>
+                                  <p className="text-[7.5px] text-slate-400">COHORT AGE</p>
+                                  <p className="text-slate-300 font-bold uppercase truncate">{currentUser.age} Yrs old</p>
+                                </div>
+                                <div>
+                                  <p className="text-[7.5px] text-slate-400">STATE FLAG</p>
+                                  <p className="text-slate-300 font-bold uppercase truncate">{currentUser.state}</p>
+                                </div>
+                              </div>
+
+                              <div className="pt-2 border-t border-white/10 flex items-center space-x-1">
+                                <ShieldCheck className="w-3 h-3 text-[#008751]" />
+                                <span className="text-[7px] text-slate-400 font-mono">SECURE NIMC REGISTERED</span>
+                              </div>
+                            </div>
+
+                            {/* Standard Verified QR */}
+                            <div className="sm:col-span-3 bg-white p-1.5 rounded-xl text-center border border-slate-750 flex flex-col items-center justify-center space-y-1 shrink-0">
+                              <QrCode className="w-12 h-12 text-slate-950" />
+                              <span className="text-[5.5px] text-slate-600 font-bold uppercase tracking-wider font-mono">Scan Audit ID</span>
+                            </div>
+
+                          </div>
+
+                          <div className="mt-5 pt-3.5 border-t border-white/10 flex justify-between items-center text-[10px] text-slate-400 font-mono">
+                            <button
+                              onClick={downloadIDCardPNG}
+                              disabled={cardDownloading}
+                              className="text-[#008751] hover:text-[#007345] flex items-center space-x-1 font-bold bg-white border border-slate-200 px-3 py-1 rounded transition-colors cursor-pointer"
+                            >
+                              <Download className="w-3 h-3 text-[#008751]" />
+                              <span>{cardDownloading ? "Generating PNG..." : "Download Official ID"}</span>
+                            </button>
+                            <span className="text-[9px]">ID Verified: 2026</span>
+                          </div>
+
                         </div>
 
-                        {/* Card body representing identity data */}
-                        <div className="grid grid-cols-3 gap-4 items-center">
-                          <div className="col-span-2 space-y-3 font-mono text-[10px]">
-                            <div>
-                              <p className="text-[8px] text-slate-400">CITIZEN FULL NAME</p>
-                              <p className="text-white font-bold tracking-wide uppercase">{currentUser.fullName}</p>
+                        {/* Cashout board explaining withdrawal eligibility */}
+                        <div className="md:col-span-2 bg-white border border-slate-200 rounded-3xl p-5 flex flex-col justify-between text-left space-y-4 shadow-sm">
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-1.5 text-[#008751]">
+                              <CheckCircle2 className="w-4 h-4" />
+                              <h4 className="font-bold text-xs uppercase tracking-wider font-mono">Identity Audits Completed!</h4>
                             </div>
+                            <p className="text-[11px] text-slate-500 leading-normal">
+                              Your APC Card is active and registered. Your grant balance of <strong>₦{currentUser.grantAmount.toLocaleString()}</strong> is fully unlocked and ready for settlement clearing.
+                            </p>
+                          </div>
 
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <p className="text-[8px] text-slate-400">MEMBER ID NUMBER</p>
-                                <p className="text-[#008751] font-bold">{currentUser.membershipId}</p>
-                              </div>
-                              <div>
-                                <p className="text-[8px] text-slate-400">COHORT AGE / STATE</p>
-                                <p className="text-slate-300 font-bold uppercase">{currentUser.age} Yrs / {currentUser.state}</p>
-                              </div>
+                          <div className="space-y-2 border-y border-slate-100 py-3 font-mono text-[10px] text-slate-500">
+                            <div className="flex justify-between">
+                              <span>Grant Status:</span>
+                              <span className="font-bold text-[#008751] uppercase text-xs text-right">UNLOCKED</span>
                             </div>
-
-                            <div className="pt-2 border-t border-white/10 flex items-center space-x-1.5">
-                              <ShieldCheck className="w-3.5 h-3.5 text-[#008751]" />
-                              <span className="text-[8px] text-slate-400 font-mono">SECURE QR AUDITED • ACTIVE REGISTRY</span>
+                            <div className="flex justify-between">
+                              <span>Disbursement Fee:</span>
+                              <span className="font-bold text-[#008751] text-xs text-right">FREE (₦0)</span>
                             </div>
                           </div>
 
-                          {/* Graphical representation of QR code */}
-                          <div className="col-span-1 bg-white p-2 text-center rounded-xl border border-slate-700 shadow-sm flex flex-col items-center justify-center space-y-1">
-                            <QrCode className="w-14 h-14 text-slate-950" />
-                            <span className="text-[6px] text-slate-600 font-bold uppercase tracking-wider font-mono">Verified ID</span>
-                          </div>
-                        </div>
-
-                        <div className="mt-5 pt-3.5 border-t border-white/10 flex justify-between items-center text-[10px] text-slate-400 font-mono">
                           <button
-                            onClick={() => {
-                              setCardDownloading(true);
-                              setTimeout(() => setCardDownloading(false), 2000);
-                            }}
-                            className="text-[#008751] hover:text-[#007345] flex items-center space-x-1 font-bold bg-white border border-slate-200 px-3 py-1 rounded transition-colors cursor-pointer"
+                            onClick={() => setActiveTab("withdrawal")}
+                            className="w-full bg-[#008751] hover:bg-[#007345] text-white font-extrabold py-3 rounded-xl shadow-sm text-xs uppercase tracking-widest text-center cursor-pointer flex items-center justify-center space-x-1"
                           >
-                            <Download className="w-3 h-3 text-[#008751]" />
-                            <span>{cardDownloading ? "Downloading..." : "Download PDF"}</span>
+                            <Send className="w-3 h-3 mr-1" />
+                            <span>Enter Bank &amp; Cashout</span>
                           </button>
-                          <span>ID Verified in: 2026</span>
                         </div>
 
                       </div>
 
-                      {/* Cashout board explaining withdrawal eligibility */}
-                      <div className="md:col-span-2 bg-white border border-slate-200 rounded-3xl p-5 flex flex-col justify-between text-left space-y-4 shadow-sm">
-                        <div className="space-y-2">
-                          <div className="flex items-center space-x-1.5 text-[#008751]">
-                            <CheckCircle2 className="w-4 h-4" />
-                            <h4 className="font-bold text-xs uppercase tracking-wider font-mono">Identity Audits Completed!</h4>
+                      {/* Customize Card Portrait Panel */}
+                      <div className="bg-white border border-slate-200 rounded-3xl p-5 text-left shadow-sm">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
+                          <div>
+                            <h4 className="font-extrabold text-slate-900 text-sm tracking-tight flex items-center gap-1.5">
+                              <Camera className="w-4 h-4 text-[#008751]" />
+                              Personalize ID Card Portrait Picture
+                            </h4>
+                            <p className="text-[11px] text-slate-500">Provide your custom picture to display inside the printable Membership ID.</p>
                           </div>
-                          <p className="text-[11px] text-slate-500 leading-normal">
-                            Your APC Card is active and registered. Your grant balance of <strong>₦{currentUser.grantAmount.toLocaleString()}</strong> is fully unlocked and ready for settlement clearing.
-                          </p>
+                          <button
+                            onClick={() => setShowPhotoModifier(!showPhotoModifier)}
+                            className="w-full sm:w-auto px-4 py-2 bg-[#008751]/10 hover:bg-[#008751]/20 text-[#008751] text-xs font-bold rounded-xl transition-all flex items-center justify-center space-x-1 shrink-0"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>{showPhotoModifier ? "Hide Portal Control" : "Toggle Portal Control"}</span>
+                          </button>
                         </div>
 
-                        <div className="space-y-2 border-y border-slate-100 py-3 font-mono text-[10px] text-slate-500">
-                          <div className="flex justify-between">
-                            <span>Grant Status:</span>
-                            <span className="font-bold text-[#008751] uppercase text-xs text-right">UNLOCKED</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Disbursement Fee:</span>
-                            <span className="font-bold text-[#008751] text-xs text-right">FREE (₦0)</span>
-                          </div>
-                        </div>
+                        <AnimatePresence>
+                          {showPhotoModifier && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                                
+                                {/* Camera & File Upload panel */}
+                                <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-150">
+                                  <h5 className="font-bold text-slate-800 text-[10.5px] uppercase tracking-wider font-mono">Upload File or Take Selfie</h5>
+                                  
+                                  <div className="flex flex-col sm:flex-row gap-3">
+                                    {/* File Picker */}
+                                    <label className="flex-1 bg-white hover:bg-slate-50 border border-dashed border-slate-300 rounded-xl p-4 text-center flex flex-col items-center justify-center cursor-pointer transition-colors">
+                                      <Upload className="w-6 h-6 text-[#008751] mb-1.5" />
+                                      <span className="text-[11px] font-bold text-slate-705">Select File</span>
+                                      <span className="text-[8px] text-slate-400 mt-0.5">JPG / PNG files</span>
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0];
+                                          if (file) {
+                                            const reader = new FileReader();
+                                            reader.onloadend = () => {
+                                              onUpdateUser({
+                                                ...currentUser,
+                                                faceVerificationImage: reader.result as string
+                                              });
+                                            };
+                                            reader.readAsDataURL(file);
+                                          }
+                                        }}
+                                      />
+                                    </label>
 
-                        <button
-                          onClick={() => setActiveTab("withdrawal")}
-                          className="w-full bg-[#008751] hover:bg-[#007345] text-white font-extrabold py-3 rounded-xl shadow-sm text-xs uppercase tracking-widest text-center cursor-pointer flex items-center justify-center space-x-1"
-                        >
-                          <Send className="w-3 h-3 mr-1" />
-                          <span>Enter Bank &amp; Cashout</span>
-                        </button>
+                                    {/* Camera Stream Widget */}
+                                    {!idCameraActive ? (
+                                      <button
+                                        type="button"
+                                        onClick={startIdCamera}
+                                        className="flex-1 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center transition-colors cursor-pointer"
+                                      >
+                                        <Camera className="w-6 h-6 text-slate-500 mb-1.5" />
+                                        <span className="text-[11px] font-bold text-slate-705">Webcam Live</span>
+                                        <span className="text-[8px] text-slate-404 mt-0.5">Take snapshot</span>
+                                      </button>
+                                    ) : (
+                                      <div className="flex-1 border border-[#008751]/20 rounded-xl p-3 bg-slate-900 text-center flex flex-col justify-between">
+                                        <div className="w-full aspect-video bg-black rounded overflow-hidden relative flex items-center justify-center mb-2">
+                                          {idCameraStream ? (
+                                            <video
+                                              id="id-webcam-video"
+                                              autoPlay
+                                              playsInline
+                                              muted
+                                              ref={(el) => {
+                                                if (el && idCameraStream) {
+                                                  el.srcObject = idCameraStream;
+                                                }
+                                              }}
+                                              className="w-full h-full object-cover scale-x-[-1]"
+                                            />
+                                          ) : (
+                                            <span className="text-[9px] text-emerald-500 animate-pulse font-mono flex items-center gap-1">
+                                              <RefreshCw className="w-3 h-3 animate-spin" /> Preparing stream...
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex gap-2 w-full">
+                                          <button
+                                            type="button"
+                                            onClick={captureIdPhoto}
+                                            disabled={idPhotoScanning}
+                                            className="flex-1 bg-[#008751] hover:bg-[#007345] text-white text-[9px] font-bold py-1.5 rounded uppercase cursor-pointer"
+                                          >
+                                            {idPhotoScanning ? "Snapping..." : "Capture"}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={stopIdCamera}
+                                            className="bg-slate-700 hover:bg-slate-600 text-white text-[9px] font-bold py-1.5 px-3 rounded uppercase cursor-pointer"
+                                          >
+                                            Cancel
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Smart Presets Widget */}
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-150 flex flex-col justify-between space-y-3">
+                                  <div>
+                                    <h5 className="font-bold text-slate-850 text-[10.5px] uppercase tracking-wider font-mono">Select Civic Avatar Preset</h5>
+                                    <p className="text-[10px] text-slate-500 leading-normal mt-0.5">Choose a pre-assembled highly polished citizen avatar profile if you do not wish to share your face.</p>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {AVATAR_PRESETS.map((preset, idx) => (
+                                      <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={() => {
+                                          onUpdateUser({
+                                            ...currentUser,
+                                            faceVerificationImage: preset.url
+                                          });
+                                        }}
+                                        className="flex items-center space-x-2 bg-white hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-250 p-2 rounded-xl text-left scale-100 active:scale-95 transition-all cursor-pointer shadow-xs"
+                                      >
+                                        <img
+                                          src={preset.url}
+                                          alt={preset.name}
+                                          className="w-8 h-10 rounded bg-slate-100 shrink-0 border border-slate-200"
+                                          referrerPolicy="no-referrer"
+                                        />
+                                        <div>
+                                          <p className="text-[9px] font-extrabold text-slate-800 leading-none">{preset.name}</p>
+                                          <p className="text-[7.5px] text-slate-400 font-mono mt-0.5">Use Preset</p>
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
 
                     </div>
@@ -1125,8 +1707,13 @@ export default function UserDashboard({
                             P
                           </div>
                           <div>
-                            <h4 className="font-extrabold text-sm text-slate-900 tracking-tight">APC SECURE PAYMENT GATEWAY</h4>
-                            <p className="text-[9px] text-slate-500 font-mono">Powered by Federal Settlement Platform</p>
+                            <div className="flex items-center space-x-2">
+                              <h4 className="font-extrabold text-sm text-slate-900 tracking-tight">APC SECURE PAYMENT GATEWAY</h4>
+                              <span className="bg-emerald-100 text-[#008751] text-[8px] font-black px-1.5 py-0.5 rounded-full border border-emerald-300 animate-pulse">
+                                ● REAL-TIME ACTIVE
+                              </span>
+                            </div>
+                            <p className="text-[9px] text-slate-500 font-mono">Secured Online Settlement powered by Paystack POP Engine</p>
                           </div>
                         </div>
                         <div className="text-left sm:text-right font-mono text-xs">
@@ -1134,18 +1721,22 @@ export default function UserDashboard({
                           <span className="font-black text-[#008751] text-sm">₦{currentUser.membershipFee.toLocaleString()}</span>
                         </div>
                       </div>
-                        {/* Active Gateway Selection Toggles */}
+
+                      {/* Active Gateway Selection Toggles with prominence on Paystack */}
                       <div className="px-6 pt-5 grid grid-cols-2 gap-3 bg-slate-50 border-b border-slate-200">
                         <button
                           type="button"
                           onClick={() => setUseRealPaystack(true)}
-                          className={`pb-3 text-[11px] font-extrabold uppercase tracking-tight font-sans text-center border-b-2 transition-all cursor-pointer ${
+                          className={`pb-3 text-[11px] font-extrabold uppercase tracking-tight font-sans text-center border-b-2 transition-all cursor-pointer relative ${
                             useRealPaystack 
                               ? "border-[#008751] text-[#008751]" 
                               : "border-transparent text-slate-400 hover:text-slate-650"
                           }`}
                         >
-                          ⚡ Paystack Online SDK
+                          ⚡ Paystack SDK (Active)
+                          <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#008751] text-white text-[7px] font-bold px-1.5 py-0.2 rounded-full scale-90">
+                            OFFICIAL
+                          </span>
                         </button>
                         <button
                           type="button"

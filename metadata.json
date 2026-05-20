@@ -1,6 +1,6 @@
 {
   "name": "APC Grants",
   "description": "Secure digital grant allocation and membership verification platform for eligible Nigerian citizens.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -6,6 +6,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { NIGERIAN_STATES, DEFAULT_GRANT_CONFIGS } from "../data";
 import { User, GrantConfig } from "../types";
+import APCLogo from "./APCLogo";
 
 interface AuthPageProps {
   initialForm?: "login" | "register";
@@ -215,11 +216,16 @@ export default function AuthPage({
         
         {/* Left Informative Column: Explaining user perks */}
         <div className="lg:col-span-5 text-left space-y-6 hidden lg:block">
-          <div className="flex items-center space-x-2 text-emerald-400">
-            <Sparkle className="w-5 h-5" />
-            <span className="font-bold font-mono text-[10px] uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 border border-emerald-550/20 rounded">
-              Secure Onboarding
-            </span>
+          <div className="flex items-center space-x-3 text-emerald-400">
+            <APCLogo className="w-14 h-14 shadow-xl" />
+            <div>
+              <div className="flex items-center space-x-1.5 bg-emerald-500/10 px-2 py-0.5 border border-emerald-555/20 rounded">
+                <Sparkle className="w-3.5 h-3.5" />
+                <span className="font-bold font-mono text-[9px] uppercase tracking-widest text-emerald-400">
+                  Secure Onboarding
+                </span>
+              </div>
+            </div>
           </div>
           
           <h2 className="text-3xl font-black text-white leading-tight">
@@ -295,6 +301,14 @@ export default function AuthPage({
             >
               Apply / Register
             </button>
+          </div>
+          
+          <div className="flex items-center space-x-3 mb-4 lg:hidden">
+            <APCLogo className="w-10 h-10 shadow-md" />
+            <div>
+              <p className="font-extrabold text-white text-xs tracking-tight">APC GRANTS HUB</p>
+              <p className="text-[9px] text-slate-500 font-mono">Federal Republic of Nigeria</p>
+            </div>
           </div>
 
           <h3 className="text-lg font-bold text-white mb-1">

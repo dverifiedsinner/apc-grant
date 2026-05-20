@@ -1,6 +1,7 @@
 import React from "react";
 import { Shield, Sparkles, UserCheck, Menu, X, LogOut, LayoutDashboard, Home, Award } from "lucide-react";
 import { User } from "../types";
+import APCLogo from "./APCLogo";
 
 interface NavbarProps {
   currentView: string;
@@ -27,11 +28,7 @@ export default function Navbar({
         <div className="flex items-center justify-between h-16">
           {/* Logo Brand / Party Style */}
           <div className="flex items-center space-x-3 cursor-pointer" onClick={() => onNavigate("home")}>
-            <div className="relative flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-tr from-[#008751] via-white to-[#D10000] p-0.5 shadow-sm">
-              <div className="w-full h-full bg-slate-50 rounded-full flex items-center justify-center">
-                <span className="text-sm font-black tracking-tighter text-[#008751]">APC</span>
-              </div>
-            </div>
+            <APCLogo className="w-10 h-10 shadow-md hover:scale-105 transition-all duration-300" />
             <div>
               <div className="flex items-center space-x-1">
                 <span className="font-extrabold text-base tracking-tight text-slate-900">APC GRANTS</span>
