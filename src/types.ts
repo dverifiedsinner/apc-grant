@@ -18,6 +18,11 @@ export interface User {
   referralCode: string;
   referredBy?: string;
   referralsCount: number;
+  nin?: string;
+  ninVerified?: boolean;
+  faceVerified?: boolean;
+  faceVerificationImage?: string;
+  faceVerificationScore?: number;
   createdAt: string;
 }
 

@@ -8,6 +8,14 @@ import { User, Withdrawal, Payment, AppNotification, GrantConfig } from "./types
 import { 
   SEED_USERS, SEED_WITHDRAWALS, SEED_PAYMENTS, SEED_NOTIFICATIONS, DEFAULT_GRANT_CONFIGS 
 } from "./data";
+import { 
+  isSupabaseConfigured, 
+  syncUserToSupabase, 
+  syncPaymentToSupabase, 
+  syncWithdrawalToSupabase, 
+  syncNotificationToSupabase, 
+  fetchAllUsersFromSupabase 
+} from "./lib/supabaseClient";
 
 export default function App() {
   
@@ -41,6 +49,24 @@ export default function App() {
     const raw = localStorage.getItem("apc_grants_configs");
     return raw ? JSON.parse(raw) : DEFAULT_GRANT_CONFIGS;
   });
+
+  // Cloud sync startup: Dynamic fetch from Supabase if active
+  useEffect(() => {
+    const syncFromCloud = async () => {
+      if (isSupabaseConfigured()) {
+        try {
+          const cloudUsers = await fetchAllUsersFromSupabase();
+          if (cloudUsers && cloudUsers.length > 0) {
+            setUsers(cloudUsers);
+            console.log("Supabase Connection Live: Sync'd users down successfully.");
+          }
+        } catch (e) {
+          console.warn("Skipped initial Supabase sync due to setup mode:", e);
+        }
+      }
+    };
+    syncFromCloud();
+  }, []);
 
   // Track state changes to localStorage
   useEffect(() => {
@@ -124,6 +150,9 @@ export default function App() {
     if (currentUser && currentUser.id === updatedUser.id) {
       setCurrentUser(updatedUser);
     }
+    if (isSupabaseConfigured()) {
+      syncUserToSupabase(updatedUser).catch(err => console.error("User dual-sync failed:", err));
+    }
   };
 
   // Add a card membership payment transaction
@@ -141,6 +170,17 @@ export default function App() {
       createdAt: new Date().toISOString()
     };
     setNotifications(prev => [notif, ...prev]);
+
+    if (isSupabaseConfigured()) {
+      syncPaymentToSupabase(newPayment).catch(err => console.error("Payment sync failed:", err));
+      syncNotificationToSupabase(notif).catch(err => console.error("Notification sync failed:", err));
+      
+      // Sync the user's updated unpaid/paid state as well
+      const matchUser = users.find(u => u.id === newPayment.userId);
+      if (matchUser) {
+        syncUserToSupabase({ ...matchUser, membershipStatus: "paid" }).catch(console.error);
+      }
+    }
   };
 
   // Add a withdrawal claim request
@@ -158,6 +198,16 @@ export default function App() {
       createdAt: new Date().toISOString()
     };
     setNotifications(prev => [notif, ...prev]);
+
+    if (isSupabaseConfigured()) {
+      syncWithdrawalToSupabase(newWithdrawal).catch(err => console.error("Withdrawal sync failed:", err));
+      syncNotificationToSupabase(notif).catch(err => console.error("Withdrawal log notifications failed:", err));
+      
+      const matchUser = users.find(u => u.id === newWithdrawal.userId);
+      if (matchUser) {
+        syncUserToSupabase({ ...matchUser, withdrawalStatus: "pending" }).catch(console.error);
+      }
+    }
   };
 
   // ADMINISTRATIVE CONTROLS: AUTHORIZE WITHDRAWALS
@@ -170,7 +220,11 @@ export default function App() {
       if (w.id === withdrawalId) {
         targetUserId = w.userId;
         amountDisbursed = w.amount;
-        return { ...w, status: "approved" };
+        const updatedW = { ...w, status: "approved" as const };
+        if (isSupabaseConfigured()) {
+          syncWithdrawalToSupabase(updatedW).catch(console.error);
+        }
+        return updatedW;
       }
       return w;
     }));
@@ -179,7 +233,11 @@ export default function App() {
     if (targetUserId) {
       setUsers(prev => prev.map(u => {
         if (u.id === targetUserId) {
-          return { ...u, withdrawalStatus: "approved" };
+          const updatedU = { ...u, withdrawalStatus: "approved" as const };
+          if (isSupabaseConfigured()) {
+            syncUserToSupabase(updatedU).catch(console.error);
+          }
+          return updatedU;
         }
         return u;
       }));
@@ -195,6 +253,9 @@ export default function App() {
         createdAt: new Date().toISOString()
       };
       setNotifications(prev => [notif, ...prev]);
+      if (isSupabaseConfigured()) {
+        syncNotificationToSupabase(notif).catch(console.error);
+      }
     }
   };
 
@@ -205,7 +266,11 @@ export default function App() {
     setWithdrawals(prev => prev.map(w => {
       if (w.id === withdrawalId) {
         targetUserId = w.userId;
-        return { ...w, status: "rejected" };
+        const updatedW = { ...w, status: "rejected" as const };
+        if (isSupabaseConfigured()) {
+          syncWithdrawalToSupabase(updatedW).catch(console.error);
+        }
+        return updatedW;
       }
       return w;
     }));
@@ -214,7 +279,11 @@ export default function App() {
       setUsers(prev => prev.map(u => {
         if (u.id === targetUserId) {
           // Revert so they can enter a valid corrected account number
-          return { ...u, withdrawalStatus: "rejected" };
+          const updatedU = { ...u, withdrawalStatus: "rejected" as const };
+          if (isSupabaseConfigured()) {
+            syncUserToSupabase(updatedU).catch(console.error);
+          }
+          return updatedU;
         }
         return u;
       }));
@@ -229,6 +298,9 @@ export default function App() {
         createdAt: new Date().toISOString()
       };
       setNotifications(prev => [notif, ...prev]);
+      if (isSupabaseConfigured()) {
+        syncNotificationToSupabase(notif).catch(console.error);
+      }
     }
   };
 

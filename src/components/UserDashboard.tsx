@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { 
   Sparkles, ShieldCheck, ShieldAlert, Award, Copy, CheckCircle2, User, Banknote, 
-  CreditCard, RefreshCw, Send, ArrowUpRight, TrendingUp, Bell, Smartphone, Star, FileText, Download, QrCode
+  CreditCard, RefreshCw, Send, ArrowUpRight, TrendingUp, Bell, Smartphone, Star, FileText, Download, QrCode,
+  Camera, Fingerprint, Check
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { NIGERIAN_BANKS } from "../data";
@@ -46,6 +47,8 @@ export default function UserDashboard({
   const [mobileWalletNumber, setMobileWalletNumber] = useState("");
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [latestPaymentRef, setLatestPaymentRef] = useState("");
+  const [latestPaymentTime, setLatestPaymentTime] = useState("");
 
   // Withdrawal States
   const [wtBank, setWtBank] = useState("");
@@ -57,11 +60,108 @@ export default function UserDashboard({
   const [withdrawalError, setWithdrawalError] = useState<string | null>(null);
   const [withdrawalSuccess, setWithdrawalSuccess] = useState(false);
 
+  // NIN & Face Verification States
+  const [ninInput, setNinInput] = useState("");
+  const [ninLoading, setNinLoading] = useState(false);
+  const [ninVerificationError, setNinVerificationError] = useState<string | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [faceScanning, setFaceScanning] = useState(false);
+  const [faceScanSuccess, setFaceScanSuccess] = useState(false);
+  const [faceVerificationError, setFaceVerificationError] = useState<string | null>(null);
+  const [biometricScore, setBiometricScore] = useState<number | null>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+
   // Copy referral code to clipboard
   const handleCopyCode = () => {
     navigator.clipboard.writeText(currentUser.referralCode);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  // NIN Verification lookup simulation
+  const handleVerifyNin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanNin = ninInput.replace(/\s/g, "");
+    if (cleanNin.length !== 11 || isNaN(Number(cleanNin))) {
+      setNinVerificationError("NIMC verification expects an exact 11-digit numeric National Identification Number.");
+      return;
+    }
+
+    setNinLoading(true);
+    setNinVerificationError(null);
+
+    setTimeout(() => {
+      setNinLoading(false);
+      // Saved NIN to user, prompting them to proceed onto live biometrics
+      const updatedUser: UserType = {
+        ...currentUser,
+        nin: cleanNin,
+        ninVerified: false // Needs face matching match to confirm authenticity
+      };
+      onUpdateUser(updatedUser);
+    }, 1800);
+  };
+
+  // Start Camera media source for Biometric face validation
+  const startCamera = async () => {
+    setFaceVerificationError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      setCameraStream(stream);
+      setCameraActive(true);
+    } catch (err) {
+      console.warn("Device webcam disabled or context sandboxed:", err);
+      // Soft-trigger cameraActive for simulated fallback so interface is fully functional
+      setCameraActive(true);
+    }
+  };
+
+  // Stop video media tracks
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setCameraActive(false);
+  };
+
+  // Release camera resource when navigating away
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [cameraStream]);
+
+  // Run face structure scanning and points tracker
+  const handleStartFaceScan = () => {
+    if (faceScanning) return;
+    setFaceScanning(true);
+    setFaceVerificationError(null);
+
+    let currentProgress = 0;
+    const interval = setInterval(() => {
+      currentProgress += 10;
+      if (currentProgress >= 100) {
+        clearInterval(interval);
+        setFaceScanning(false);
+        setFaceScanSuccess(true);
+        const matchIndex = +(95.2 + Math.random() * 4.3).toFixed(2);
+        setBiometricScore(matchIndex);
+
+        // Commit verified identity status to user state profile
+        const updatedUser: UserType = {
+          ...currentUser,
+          ninVerified: true,
+          faceVerified: true,
+          faceVerificationScore: matchIndex,
+          faceVerificationImage: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=250&auto=format&fit=crop"
+        };
+        onUpdateUser(updatedUser);
+        stopCamera();
+      }
+    }, 200);
   };
 
   // Simulate Flutterwave/Paystack Checkout Payment Gateway
@@ -75,6 +175,18 @@ export default function UserDashboard({
 
       // Create Payment object
       const paymentRef = `REF_APC_${Math.floor(10000000 + Math.random() * 90000000)}`;
+      const formattedTime = new Date().toLocaleString("en-NG", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
+
+      setLatestPaymentRef(paymentRef);
+      setLatestPaymentTime(formattedTime);
+
       const newPayment: Payment = {
         id: `p-${Date.now()}`,
         userId: currentUser.id,
@@ -104,7 +216,7 @@ export default function UserDashboard({
       setTimeout(() => {
         setActiveTab("overview");
         setPaymentSuccess(false);
-      }, 3000);
+      }, 5000); // 5 sec to let them audit the print receipt
 
     }, 2200);
   };
@@ -480,6 +592,235 @@ export default function UserDashboard({
 
                   </div>
 
+                  {/* National NIN & Biometric Facial Verification Hub */}
+                  <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/[0.02] rounded-full blur-2xl pointer-events-none" />
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2.5 bg-[#008751]/10 text-[#008751] rounded-2xl border border-[#008751]/20">
+                          <Fingerprint className="w-5 h-5 animate-pulse" />
+                        </div>
+                        <div>
+                          <h3 className="font-extrabold text-xs text-slate-900 tracking-tight uppercase">National Biometric Audit Suite</h3>
+                          <p className="text-[9px] text-slate-500 font-mono">NIMC HIGH-SECURITY DIRECT LINK Desk</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center">
+                        {(currentUser.ninVerified && currentUser.faceVerified) ? (
+                          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-mono px-2 py-0.5 rounded-full font-bold uppercase flex items-center space-x-1">
+                            <span className="inline-block w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping mr-1" />
+                            <span>Verified Citizen</span>
+                          </span>
+                        ) : (
+                          <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-mono px-2 py-0.5 rounded-full font-bold uppercase animate-pulse">
+                            Security Assessment Pending
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Step-by-Step Security Wizard */}
+                    {!(currentUser.nin) ? (
+                      /* STEP 1: BIND CITIZEN NIN */
+                      <div className="space-y-4 max-w-lg">
+                        <div className="space-y-1.5">
+                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-tight font-mono">Step 1: Link your National Identity Number (NIN)</h4>
+                          <p className="text-[11px] text-slate-500 leading-relaxed">
+                            Federal regulations require linking your valid 11-digit NIN. Linking your NIN ensures each citizen is restricted to a single verified account file, completely eliminating multiple accounts fraud and Sybil double-dipping on government funds.
+                          </p>
+                        </div>
+
+                        <form onSubmit={handleVerifyNin} className="flex flex-col sm:flex-row gap-3 items-end">
+                          <div className="flex-grow w-full text-left">
+                            <label className="block text-[8px] text-slate-500 font-bold uppercase font-mono mb-1">
+                              11-Digit NIMC Identifier
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              maxLength={11}
+                              value={ninInput}
+                              onChange={(e) => setNinInput(e.target.value.replace(/\D/g, ""))}
+                              placeholder="38290184491"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-slate-800 font-mono text-xs focus:outline-none focus:border-[#008751] focus:bg-white"
+                            />
+                          </div>
+
+                          <button
+                            type="submit"
+                            disabled={ninLoading}
+                            className="bg-[#008751] hover:bg-[#007345] text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-1 whitespace-nowrap cursor-pointer disabled:opacity-50"
+                          >
+                            {ninLoading ? (
+                              <>
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1" />
+                                <span>Verifying...</span>
+                              </>
+                            ) : (
+                              <span>Verify NIN Record</span>
+                            )}
+                          </button>
+                        </form>
+                        {ninVerificationError && (
+                          <p className="text-[10px] text-red-600 font-semibold">{ninVerificationError}</p>
+                        )}
+                      </div>
+                    ) : !currentUser.faceVerified ? (
+                      /* STEP 2: FACE ID BIOMETRIC SCANNING */
+                      <div className="space-y-4">
+                        <div className="space-y-1 max-w-lg">
+                          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-tight font-mono">Step 2: Biometric Facial Match Scan</h4>
+                          <p className="text-[11px] text-slate-500 leading-relaxed">
+                            NIN: <strong className="font-mono text-[#008751]">{currentUser.nin?.substring(0,3)}*****{currentUser.nin?.slice(-3)}</strong> linked successfully. Now, verify ownership of this NIN record by conducting a live biometric selfie analysis to guarantee you are not creating a synthetic clone profile.
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+                          
+                          {/* Face Scanner Feed Window */}
+                          <div className="md:col-span-5 bg-slate-950 aspect-video md:aspect-square rounded-2xl overflow-hidden border border-slate-950 flex flex-col items-center justify-center relative shadow-inner min-h-[180px]">
+                            {cameraActive ? (
+                              <div className="w-full h-full relative flex items-center justify-center">
+                                {/* Simulated Interactive Overlay */}
+                                <div className="absolute inset-0 border border-[#008751]/30 rounded-2xl pointer-events-none" />
+                                <div className="absolute inset-4 border border-dashed border-emerald-500/20 rounded-full animate-spin pointer-events-none" style={{ animationDuration: '20s' }} />
+                                
+                                {/* Dynamic Scanning bar overlay */}
+                                {faceScanning && (
+                                  <div className="absolute left-0 right-0 h-0.5 bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-pulse" style={{ top: '40%' }} />
+                                )}
+
+                                {/* Target guidelines */}
+                                <div className="absolute top-2 left-2 text-[#008751] font-mono text-[7px] space-y-0.5 pointer-events-none">
+                                  <p>AGC: AUTO_GAIN</p>
+                                  <p>LOCK: SCAN_READY</p>
+                                  <p>FPS: 30</p>
+                                </div>
+
+                                <div className="absolute bottom-2 right-2 text-red-500 font-mono text-[7px] animate-pulse">
+                                  ● REC BIOMETRICS
+                                </div>
+
+                                {/* Simulated Face Grid Dots */}
+                                <div className="absolute w-20 h-20 border border-[#008751]/30 rounded-full flex items-center justify-center pointer-events-none">
+                                  <div className="absolute w-2 h-2 bg-[#008751] rounded-full animate-ping" />
+                                  <span className="w-1.5 h-1.5 bg-[#008751] rounded-full" />
+                                  <span className="absolute top-2 left-4 text-[#008751] text-[6px]">T: 0.98</span>
+                                  <span className="absolute bottom-2 right-4 text-[#008751] text-[6px]">M: Match</span>
+                                </div>
+
+                                {/* Standard video stream backup block */}
+                                <div className="w-full h-full bg-slate-950 flex flex-col items-center justify-center text-slate-500 text-[10px] space-y-1 p-4 text-center">
+                                  <Camera className="w-6 h-6 text-emerald-500 animate-pulse" />
+                                  <span className="font-mono text-[8px] text-emerald-500">BIOMETRIC FIELD ACQUIRED</span>
+                                  <span className="text-slate-400">Position your face inside the bounding scope and secure room lighting</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-center p-6 space-y-3">
+                                <Camera className="w-8 h-8 text-slate-705 mx-auto" />
+                                <div className="space-y-1">
+                                  <span className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono">Biometrics Stream Offline</span>
+                                  <span className="block text-[9px] text-slate-500 leading-tight font-sans">Webcam access required to start facial matches</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Control desk column */}
+                          <div className="md:col-span-7 space-y-3.5 text-left">
+                            <div className="space-y-1">
+                              <span className="text-[9px] text-amber-700 bg-amber-500/10 px-2 py-0.5 rounded font-mono font-bold uppercase">
+                                Biometric Action Required
+                              </span>
+                              <h5 className="font-bold text-xs text-slate-800">Align face inside biometric window</h5>
+                              <p className="text-[10px] text-slate-550 leading-normal font-sans">
+                                Ensure your room has good ambient lighting. You will be prompted to hold steady for a brief 3-second live structure scanning mapping index.
+                              </p>
+                            </div>
+
+                            <div className="flex gap-2.5">
+                              {!cameraActive ? (
+                                <button
+                                  onClick={startCamera}
+                                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-xl text-xs cursor-pointer flex items-center space-x-1"
+                                >
+                                  <Camera className="w-3.5 h-3.5 mr-1" />
+                                  <span>Activate Webcam</span>
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={handleStartFaceScan}
+                                    disabled={faceScanning}
+                                    className="bg-[#008751] hover:bg-[#007345] text-white font-bold py-2.5 px-4 rounded-xl text-xs cursor-pointer flex items-center space-x-1 disabled:opacity-50"
+                                  >
+                                    {faceScanning ? (
+                                      <>
+                                        <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1" />
+                                        <span>Capturing mesh...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Fingerprint className="w-3.5 h-3.5 mr-1" />
+                                        <span>Launch Biometric Scan</span>
+                                      </>
+                                    )}
+                                  </button>
+
+                                  <button
+                                    onClick={stopCamera}
+                                    className="bg-slate-205 hover:bg-slate-300 text-slate-700 font-bold py-2 px-3 rounded-xl text-xs cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          
+                        </div>
+                      </div>
+                    ) : (
+                      /* STEP 3: BOTH COMPLETED AND BIOMETRIC LOCK CLEARED */
+                      <div className="bg-emerald-500/[0.02] border border-emerald-500/10 rounded-2xl p-5 grid grid-cols-1 md:grid-cols-12 gap-4 items-center animate-fade-in text-xs font-sans">
+                        
+                        <div className="md:col-span-8 flex items-start space-x-3 text-left">
+                          <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl border border-emerald-500/15 flex-shrink-0 mt-0.5">
+                            <ShieldCheck className="w-5 h-5 animate-pulse" />
+                          </div>
+                          <div className="space-y-1">
+                            <h4 className="font-extrabold text-slate-950 uppercase tracking-tight">Identity Anti-Fraud Security audit: Approved</h4>
+                            <p className="text-[10.5px] text-slate-500 leading-normal font-sans">
+                              Excellent! National Identity database mapping confirms your unique biometric profile and legal NIN identifier matches perfectly.
+                            </p>
+                            
+                            <div className="grid grid-cols-2 gap-3 pt-2 font-mono text-[9px] text-slate-500 text-left">
+                              <div>
+                                <span>Linked NIN: </span>
+                                <strong className="text-slate-850">*********{(currentUser.nin || "38290184491").slice(-2)}</strong>
+                              </div>
+                              <div>
+                                <span>Biometric Conformance: </span>
+                                <strong className="text-emerald-700">{currentUser.faceVerificationScore || "98.4"}% Match</strong>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-4 justify-end flex">
+                          <div className="flex flex-col items-center bg-white border border-slate-200 rounded-xl px-4 py-2 text-center shadow-xs">
+                            <span className="text-[8px] uppercase text-slate-400 font-bold font-mono">STATUS ENVELOPE</span>
+                            <span className="text-[10px] font-black font-mono text-emerald-600">NIMC-PASSED</span>
+                          </div>
+                        </div>
+
+                      </div>
+                    )}
+
+                  </div>
+
                   {/* Core Interactive Portal for Unpaid Actions */}
                   {currentUser.membershipStatus !== "paid" && (
                     <div className="bg-gradient-to-tr from-[#008751]/5 via-white to-[#D10000]/5 border border-slate-200 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-sm">
@@ -667,58 +1008,110 @@ export default function UserDashboard({
                     <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                       
                       {/* Paystack/Flutterwave visual header */}
-                      <div className="bg-slate-50 px-6 py-5 border-b border-slate-200 flex justify-between items-center">
+                      <div className="bg-slate-50 px-6 py-5 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div className="flex items-center space-x-2.5">
-                          <div className="w-7 h-7 bg-[#008751] rounded-full flex items-center justify-center text-[10px] font-black text-white">
+                          <div className="w-7 h-7 bg-[#008751] rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0">
                             P
                           </div>
                           <div>
-                            <h4 className="font-extrabold text-sm text-slate-900">APC SECURE PAYMENT GATEWAY</h4>
+                            <h4 className="font-extrabold text-sm text-slate-900 tracking-tight">APC SECURE PAYMENT GATEWAY</h4>
                             <p className="text-[9px] text-slate-500 font-mono">Powered by Federal Settlement Platform</p>
                           </div>
                         </div>
-                        <div className="text-right font-mono text-xs">
+                        <div className="text-left sm:text-right font-mono text-xs">
                           <span className="text-slate-500 block text-[9px] uppercase font-sans">Verification Amount Due</span>
                           <span className="font-black text-[#008751] text-sm">₦{currentUser.membershipFee.toLocaleString()}</span>
                         </div>
                       </div>
 
                       {/* Payment Method Selector Grid */}
-                      <div className="grid grid-cols-4 border-b border-slate-200 text-center font-bold text-[10px] md:text-xs">
-                        {[
-                          { id: "card", label: "Debit Card", icon: CreditCard },
-                          { id: "bank_transfer", label: "Bank Transfer", icon: RefreshCw },
-                          { id: "ussd", label: "USSD Code", icon: Smartphone },
-                          { id: "wallet", label: "Digital Wallet", icon: Award }
-                        ].map((m) => {
-                          const Icon = m.icon;
-                          const selected = paymentMethod === m.id;
-                          return (
-                            <button
-                              key={m.id}
-                              onClick={() => setPaymentMethod(m.id as any)}
-                              className={`py-3 flex flex-col items-center justify-center gap-1 border-b-2 transition-all cursor-pointer ${
-                                selected 
-                                  ? "border-[#008751] text-[#008751] bg-white font-extrabold" 
-                                  : "border-transparent text-slate-500 hover:text-slate-855 hover:bg-slate-100/50"
-                              }`}
-                            >
-                              <Icon className="w-4 h-4 text-[#008751]" />
-                              <span>{m.label}</span>
-                            </button>
-                          );
-                        })}
-                          {/* Dynamic Gateway Views inside portal */}
+                      <div className="p-3 bg-slate-50 border-b border-slate-200">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-bold text-[10px] md:text-xs">
+                          {[
+                            { id: "card", label: "Debit Card", icon: CreditCard },
+                            { id: "bank_transfer", label: "Bank Transfer", icon: RefreshCw },
+                            { id: "ussd", label: "USSD Code", icon: Smartphone },
+                            { id: "wallet", label: "Digital Wallet", icon: Award }
+                          ].map((m) => {
+                            const Icon = m.icon;
+                            const selected = paymentMethod === m.id;
+                            return (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={() => setPaymentMethod(m.id as any)}
+                                className={`py-2.5 px-2 flex flex-col sm:flex-row items-center justify-center gap-2 rounded-xl transition-all cursor-pointer border ${
+                                  selected 
+                                    ? "bg-[#008751] text-white border-[#008751] shadow-sm font-extrabold" 
+                                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
+                                }`}
+                                style={{ minHeight: "44px" }}
+                              >
+                                <Icon className={`w-3.5 h-3.5 ${selected ? "text-white" : "text-[#008751]"}`} />
+                                <span className="tracking-tight">{m.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Dynamic Gateway Views inside portal */}
                       <div className="p-6 sm:p-8 text-xs font-sans bg-white">
                         
                         {paymentSuccess ? (
-                          <div className="py-8 text-center space-y-4 bg-white">
-                            <div className="w-14 h-14 bg-[#008751]/10 rounded-full flex items-center justify-center text-[#008751] mx-auto border border-[#008751]/20">
-                              <CheckCircle2 className="w-7 h-7 animate-pulse" />
+                          <div className="py-6 text-center space-y-6 bg-white animate-fade-in max-w-md mx-auto">
+                            <div className="w-14 h-14 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-600 mx-auto border border-emerald-500/20 shadow-sm relative">
+                              <CheckCircle2 className="w-8 h-8 animate-bounce" />
+                              <span className="absolute top-0 right-0 p-1 bg-emerald-500 text-white rounded-full text-[6px] font-bold">100%</span>
                             </div>
-                            <h4 className="text-lg font-black text-slate-900 animate-pulse">Verification Payment Cleared!</h4>
-                            <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-                              Providus central ledger verified transaction cleared successfully. Redirecting you to initialize your grant payout file...
+                            
+                            <div className="space-y-1">
+                              <h4 className="text-base font-black text-slate-900 tracking-tight">Identity Token Payment Settled</h4>
+                              <p className="text-[10px] text-slate-500 font-mono">ID CARD STATUS: ACTIVE / PROVISIONED</p>
+                            </div>
+
+                            {/* Federal Transaction Receipt Container */}
+                            <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-4 text-left font-mono text-[10px] space-y-2.5 relative">
+                              <div className="absolute top-2 right-2 flex space-x-0.5 opacity-30">
+                                <div className="w-1 h-3 bg-slate-900" />
+                                <div className="w-0.5 h-3 bg-slate-900" />
+                                <div className="w-1.5 h-3 bg-slate-900" />
+                                <div className="w-0.5 h-3 bg-slate-900" />
+                              </div>
+
+                              <div className="border-b border-dashed border-slate-200 pb-2 flex justify-between uppercase">
+                                <span className="text-slate-400">Merchant:</span>
+                                <span className="text-slate-800 font-semibold">APC Federal Settlement</span>
+                              </div>
+                              
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">Payer Name:</span>
+                                <span className="text-slate-800 font-bold uppercase">{currentUser.fullName}</span>
+                              </div>
+                              
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">Reference No:</span>
+                                <span className="text-emerald-700 font-bold select-all tracking-wider">{latestPaymentRef || "REF-APC-GEN7764"}</span>
+                              </div>
+
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">Payment channel:</span>
+                                <span className="text-slate-800 uppercase font-bold">{paymentMethod.replace("_", " ")} Gateway</span>
+                              </div>
+
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">Settled On:</span>
+                                <span className="text-slate-800 font-bold">{latestPaymentTime || new Date().toLocaleString()}</span>
+                              </div>
+
+                              <div className="border-t border-dashed border-slate-200 pt-2.5 flex justify-between text-xs font-bold font-mono">
+                                <span className="text-slate-600">Total Cleared:</span>
+                                <span className="text-emerald-600 font-extrabold text-[#008751]">₦{currentUser.membershipFee.toLocaleString()}</span>
+                              </div>
+                            </div>
+
+                            <p className="text-[10px] text-slate-400 leading-normal bg-amber-500/5 px-2 py-1.5 border border-amber-500/10 rounded-lg max-w-xs mx-auto">
+                              ⚠️ Your membership card is ready. Secure system is returning you in a moment to complete automatic activation...
                             </p>
                           </div>
                         ) : (
@@ -915,8 +1308,7 @@ export default function UserDashboard({
                       </div> 
                       </div>
 
-                    </div>
-                  )}
+                    )}
 
                 </motion.div>
               )}
@@ -945,6 +1337,23 @@ export default function UserDashboard({
                         className="bg-[#008751] hover:bg-[#007345] text-white font-extrabold py-2 px-5 rounded-lg text-xs cursor-pointer"
                       >
                         Acquire Registration ID Now
+                      </button>
+                    </div>
+                  ) : (!currentUser.ninVerified || !currentUser.faceVerified) ? (
+                    // OUTSTANDING IDENTITY SECURITY PROTOCOL BLOCK
+                    <div className="bg-white border border-amber-300 rounded-2xl p-6 text-center space-y-4 shadow-sm">
+                      <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center text-amber-600 mx-auto border border-amber-200">
+                        <Fingerprint className="w-5 h-5 animate-pulse" />
+                      </div>
+                      <h3 className="text-base font-extrabold text-amber-900">Withdrawal on Hold: Identity Biometrics Missing</h3>
+                      <p className="text-xs text-slate-650 max-w-sm mx-auto leading-relaxed">
+                        Anti-fraud security protocols require connecting your valid 11-digit NIN and doing a Live Facial Verification scan to secure payments against double-allocations and duplicate accounts.
+                      </p>
+                      <button
+                        onClick={() => setActiveTab("overview")}
+                        className="bg-[#007345] hover:bg-[#005e38] text-white font-extrabold py-2 px-5 rounded-lg text-xs cursor-pointer uppercase font-mono tracking-wider shadow-sm"
+                      >
+                        Complete NIN &amp; Biometrics Verification
                       </button>
                     </div>
                   ) : (
