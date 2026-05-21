@@ -5,7 +5,7 @@ import {
   Camera, Fingerprint, Check, Upload, Image, Eye
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { NIGERIAN_BANKS } from "../data";
+import { NIGERIAN_BANKS, NIGERIAN_STATES, DEFAULT_GRANT_CONFIGS } from "../data";
 import { User as UserType, Payment, Withdrawal, AppNotification } from "../types";
 import APCLogo from "./APCLogo";
 
@@ -195,6 +195,79 @@ export default function UserDashboard({
   const [idCameraStream, setIdCameraStream] = useState<MediaStream | null>(null);
   const [showPhotoModifier, setShowPhotoModifier] = useState(false);
   const [idPhotoScanning, setIdPhotoScanning] = useState(false);
+
+  // USER PROFILE EDITING STATES & HANDLERS
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
+  const [profileName, setProfileName] = useState(currentUser.fullName);
+  const [profilePhone, setProfilePhone] = useState(currentUser.phone);
+  const [profileDob, setProfileDob] = useState(currentUser.dob);
+  const [profileState, setProfileState] = useState(currentUser.state);
+  const [profileSuccessMsg, setProfileSuccessMsg] = useState("");
+  const [profileErrorMsg, setProfileErrorMsg] = useState("");
+
+  // Keep profile editor states in sync with current user state shifts
+  useEffect(() => {
+    setProfileName(currentUser.fullName);
+    setProfilePhone(currentUser.phone);
+    setProfileDob(currentUser.dob);
+    setProfileState(currentUser.state);
+  }, [currentUser.fullName, currentUser.phone, currentUser.dob, currentUser.state]);
+
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileSuccessMsg("");
+    setProfileErrorMsg("");
+
+    if (!profileName.trim()) {
+      setProfileErrorMsg("Citizen Full Name cannot be left blank.");
+      return;
+    }
+    if (!profilePhone.trim()) {
+      setProfileErrorMsg("Phone number is required for verification alerts.");
+      return;
+    }
+    if (!profileDob) {
+      setProfileErrorMsg("Please select a valid date of birth.");
+      return;
+    }
+
+    // Calculate age automatically using dob and 2026-05-20 as current system time
+    const birthDate = new Date(profileDob);
+    const today = new Date("2026-05-20");
+    let calAge = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      calAge--;
+    }
+
+    if (calAge < 17) {
+      setProfileErrorMsg("Citizens must be aged 17 or above to be eligible for the grant.");
+      return;
+    }
+
+    // Determine the corresponding grant allocation bracket and membership fee
+    const matchedConfig = DEFAULT_GRANT_CONFIGS.find(
+      config => calAge >= config.minAge && calAge <= config.maxAge
+    ) || DEFAULT_GRANT_CONFIGS[DEFAULT_GRANT_CONFIGS.length - 1];
+
+    const updatedUser = {
+      ...currentUser,
+      fullName: profileName.trim(),
+      phone: profilePhone.trim(),
+      dob: profileDob,
+      age: calAge,
+      state: profileState,
+      // Synchronize grant configuration variables
+      grantAmount: matchedConfig ? matchedConfig.grantAmount : currentUser.grantAmount,
+      membershipFee: matchedConfig ? matchedConfig.membershipFee : currentUser.membershipFee
+    };
+
+    onUpdateUser(updatedUser);
+    setProfileSuccessMsg("Citizen profile details updated successfully!");
+    setTimeout(() => {
+      setProfileSuccessMsg("");
+    }, 4000);
+  };
 
   const AVATAR_PRESETS = [
     {
@@ -840,13 +913,46 @@ export default function UserDashboard({
         const matchIndex = +(95.2 + Math.random() * 4.3).toFixed(2);
         setBiometricScore(matchIndex);
 
+        // Capture a real snapshot selfie if webcam is active and video is playing
+        let selfieBase64 = "";
+        const videoElement = document.getElementById("biometric-webcam-video") as HTMLVideoElement | null;
+        if (videoElement && cameraStream) {
+          try {
+            const snapCanvas = document.createElement("canvas");
+            snapCanvas.width = 300;
+            snapCanvas.height = 300;
+            const snapCtx = snapCanvas.getContext("2d");
+            if (snapCtx) {
+              const vWidth = videoElement.videoWidth || 300;
+              const vHeight = videoElement.videoHeight || 300;
+              const size = Math.min(vWidth, vHeight);
+              const xStart = (vWidth - size) / 2;
+              const yStart = (vHeight - size) / 2;
+              
+              // Mirror the image to match standard selfie mirror view
+              snapCtx.translate(300, 0);
+              snapCtx.scale(-1, 1);
+              
+              snapCtx.drawImage(videoElement, xStart, yStart, size, size, 0, 0, 300, 300);
+              selfieBase64 = snapCanvas.toDataURL("image/png");
+            }
+          } catch (err) {
+            console.warn("Face biometric snapshot capture failed:", err);
+          }
+        }
+
+        // Beautiful default fallback picture if stream capture failed or was mocked
+        if (!selfieBase64) {
+          selfieBase64 = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=250&auto=format&fit=crop";
+        }
+
         // Commit verified identity status to user state profile
         const updatedUser: UserType = {
           ...currentUser,
           ninVerified: true,
           faceVerified: true,
           faceVerificationScore: matchIndex,
-          faceVerificationImage: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=250&auto=format&fit=crop"
+          faceVerificationImage: selfieBase64
         };
         onUpdateUser(updatedUser);
         stopCamera();
@@ -1401,11 +1507,26 @@ export default function UserDashboard({
                                 </div>
 
                                 {/* Standard video stream backup block */}
-                                <div className="w-full h-full bg-slate-950 flex flex-col items-center justify-center text-slate-500 text-[10px] space-y-1 p-4 text-center">
-                                  <Camera className="w-6 h-6 text-emerald-500 animate-pulse" />
-                                  <span className="font-mono text-[8px] text-emerald-500">BIOMETRIC FIELD ACQUIRED</span>
-                                  <span className="text-slate-400">Position your face inside the bounding scope and secure room lighting</span>
-                                </div>
+                                {cameraStream ? (
+                                  <video
+                                    id="biometric-webcam-video"
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    ref={(el) => {
+                                      if (el && cameraStream) {
+                                        el.srcObject = cameraStream;
+                                      }
+                                    }}
+                                    className="w-full h-full object-cover scale-x-[-1]"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-slate-950 flex flex-col items-center justify-center text-slate-500 text-[10px] space-y-1 p-4 text-center">
+                                    <Camera className="w-6 h-6 text-emerald-500 animate-pulse" />
+                                    <span className="font-mono text-[8px] text-emerald-500">BIOMETRIC FIELD ACQUIRED</span>
+                                    <span className="text-slate-400">Position your face inside the bounding scope and secure room lighting</span>
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <div className="text-center p-6 space-y-3">
@@ -1496,6 +1617,36 @@ export default function UserDashboard({
                                 <strong className="text-emerald-700">{currentUser.faceVerificationScore || "98.4"}% Match</strong>
                               </div>
                             </div>
+                            
+                            {currentUser.faceVerificationImage && (
+                              <div className="pt-3 flex items-center space-x-3 border-t border-slate-100 mt-2">
+                                <span className="font-mono text-[9px] text-slate-500">Captured Selfie Profile:</span>
+                                <div className="relative">
+                                  <img
+                                    src={currentUser.faceVerificationImage}
+                                    alt="Face verification selfie"
+                                    className="w-10 h-10 rounded-full object-cover border-2 border-emerald-505 shadow-sm"
+                                  />
+                                  <span className="absolute -bottom-1 -right-1 bg-emerald-500 text-white rounded-full p-0.5 border border-white">
+                                    <Check className="w-2 h-2" />
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onUpdateUser({
+                                      ...currentUser,
+                                      faceVerified: false,
+                                      faceVerificationScore: undefined,
+                                      faceVerificationImage: undefined
+                                    });
+                                  }}
+                                  className="text-[9px] text-[#D10000] hover:text-[#b80000] underline uppercase tracking-tight font-mono font-bold cursor-pointer transition-colors ml-2"
+                                >
+                                  Retake Selfie
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -1857,6 +2008,124 @@ export default function UserDashboard({
                                 </div>
 
                               </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      {/* Edit Citizen Profile Section */}
+                      <div className="bg-white border border-slate-200 rounded-3xl p-5 text-left shadow-sm">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
+                          <div>
+                            <h4 className="font-extrabold text-slate-900 text-sm tracking-tight flex items-center gap-1.5">
+                              <User className="w-4 h-4 text-[#008751]" />
+                              Edit Citizen Profile Details
+                            </h4>
+                            <p className="text-[11px] text-slate-500">Update your official full name, contact phone number, date of birth, and state of origin.</p>
+                          </div>
+                          <button
+                            onClick={() => setShowProfileEdit(!showProfileEdit)}
+                            className="w-full sm:w-auto px-4 py-2 bg-[#008751]/10 hover:bg-[#008751]/20 text-[#008751] text-xs font-bold rounded-xl transition-all flex items-center justify-center space-x-1 shrink-0"
+                          >
+                            <User className="w-3.5 h-3.5" />
+                            <span>{showProfileEdit ? "Close Profile Form" : "Manage Profile Details"}</span>
+                          </button>
+                        </div>
+
+                        <AnimatePresence>
+                          {showProfileEdit && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <form onSubmit={handleSaveProfile} className="space-y-4 pt-1">
+                                {profileErrorMsg && (
+                                  <div className="p-3 bg-red-50 border border-red-200 text-[#D10000] rounded-xl text-xs font-semibold">
+                                    {profileErrorMsg}
+                                  </div>
+                                )}
+                                {profileSuccessMsg && (
+                                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-[#008751] rounded-xl text-xs font-bold">
+                                    {profileSuccessMsg}
+                                  </div>
+                                )}
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {/* Full name input */}
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">
+                                      Citizen Full Name
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={profileName}
+                                      onChange={(e) => setProfileName(e.target.value)}
+                                      placeholder="e.g. Ibrahim Musa"
+                                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3.5 text-slate-900 font-sans focus:outline-none focus:border-[#008751] text-xs transition-colors"
+                                    />
+                                    <p className="text-[9px] text-slate-400 mt-1">Must match the registered name on your commercial bank account.</p>
+                                  </div>
+
+                                  {/* Phone number input */}
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">
+                                      Phone Number
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={profilePhone}
+                                      onChange={(e) => setProfilePhone(e.target.value)}
+                                      placeholder="e.g. +234 803 123 4567"
+                                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3.5 text-slate-900 font-mono focus:outline-none focus:border-[#008751] text-xs transition-colors"
+                                    />
+                                    <p className="text-[9px] text-slate-400 mt-1">Required for real-time disbursement SMS and verification status alerts.</p>
+                                  </div>
+
+                                  {/* Date of Birth input */}
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">
+                                      Date of Birth
+                                    </label>
+                                    <input
+                                      type="date"
+                                      value={profileDob}
+                                      onChange={(e) => setProfileDob(e.target.value)}
+                                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3.5 text-slate-900 font-mono focus:outline-none focus:border-[#008751] text-xs transition-colors"
+                                    />
+                                    <p className="text-[9px] text-slate-400 mt-1">Determines your age bracket. Grants are calibrated automatically according to your age.</p>
+                                  </div>
+
+                                  {/* State origin selection */}
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1.5 font-mono">
+                                      State of Origin / Residence
+                                    </label>
+                                    <select
+                                      value={profileState}
+                                      onChange={(e) => setProfileState(e.target.value)}
+                                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3.5 text-slate-900 font-sans focus:outline-none focus:border-[#008751] text-xs transition-colors"
+                                    >
+                                      {NIGERIAN_STATES.map((state) => (
+                                        <option key={state} value={state}>
+                                          {state}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <p className="text-[9px] text-slate-400 mt-1">Your registered state represents the jurisdiction of fund dispersal.</p>
+                                  </div>
+                                </div>
+
+                                <div className="flex justify-end pt-2">
+                                  <button
+                                    type="submit"
+                                    className="px-5 py-2.5 bg-[#008751] hover:bg-[#007345] text-white text-xs font-bold rounded-xl shadow-xs transition-all active:scale-97 cursor-pointer"
+                                  >
+                                    Save Profile Changes
+                                  </button>
+                               </div>
+                              </form>
                             </motion.div>
                           )}
                         </AnimatePresence>
