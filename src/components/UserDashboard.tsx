@@ -411,26 +411,69 @@ export default function UserDashboard({
       // Subtle light blue and rose radial/linear gradient background glow 
       const bgGrad = ctx.createLinearGradient(0, 0, 640, 400);
       bgGrad.addColorStop(0, "#FFFFFF");
-      bgGrad.addColorStop(0.6, "#F8FAFC");
-      bgGrad.addColorStop(1, "#F0F9FF"); // light blue sky base
+      bgGrad.addColorStop(0.5, "#F8FAFC");
+      bgGrad.addColorStop(1, "#E0F2FE"); // beautiful light blue base
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, 640, 400);
 
       // Classic security grid background pattern in low opacity Light Blue
       ctx.strokeStyle = "rgba(0, 173, 239, 0.05)";
       ctx.lineWidth = 1;
-      for (let i = 0; i < 640; i += 30) {
+      for (let i = 0; i < 640; i += 20) {
         ctx.beginPath();
         ctx.moveTo(i, 0);
         ctx.lineTo(i, 400);
         ctx.stroke();
       }
-      for (let j = 0; j < 400; j += 30) {
+      for (let j = 0; j < 400; j += 20) {
         ctx.beginPath();
         ctx.moveTo(0, j);
         ctx.lineTo(640, j);
         ctx.stroke();
       }
+
+      // --- Futuristic High-Tech/Digital Watermarks ---
+      
+      // Fine concentric light blue safety lines
+      ctx.strokeStyle = "rgba(0, 173, 239, 0.06)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(480, 200, 180, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(480, 200, 140, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(480, 200, 70, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Digital micro-text background sequence
+      ctx.fillStyle = "rgba(0, 173, 239, 0.12)";
+      ctx.font = "bold 6.5px monospace";
+      ctx.textAlign = "left";
+      ctx.fillText("01010110 01000101 01010010 01001001 01000110 01001001 01000101 01000100", 225, 114);
+      ctx.fillText("APC BIOMETRIC EMBEDDED CHAIN VERIFICATION // CLOUD INTERACTIVE REGISTER", 225, 303);
+      ctx.fillText("NIMC VERIFIED IDENTITY APPLICANT // RENEWED HOPE GRANT CLEARING OK", 225, 314);
+
+      // Guilloche safety wavy line patterns (representing standard bank/passport design specs)
+      ctx.strokeStyle = "rgba(209, 0, 0, 0.035)"; // Super light red waving security band
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let wx = 40; wx <= 600; wx += 4) {
+        const wy = 230 + Math.sin(wx * 0.02) * 12 + Math.cos(wx * 0.04) * 6;
+        if (wx === 40) ctx.moveTo(wx, wy);
+        else ctx.lineTo(wx, wy);
+      }
+      ctx.stroke();
+      
+      ctx.strokeStyle = "rgba(0, 173, 239, 0.05)"; // Super light blue waving security band
+      ctx.beginPath();
+      for (let wx = 40; wx <= 600; wx += 4) {
+        const wy = 240 + Math.cos(wx * 0.02) * 12 + Math.sin(wx * 0.03) * 6;
+        if (wx === 40) ctx.moveTo(wx, wy);
+        else ctx.lineTo(wx, wy);
+      }
+      ctx.stroke();
 
       // 2. Dual Side Ribbon of Light Blue and Red representing national pride
       ctx.fillStyle = "#00ADEF"; // Light Blue vertical ribbon
@@ -1504,24 +1547,47 @@ export default function UserDashboard({
                       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                         
                         {/* Polished HTML APC Digital Identification card layout (Red, White, and Light Blue Classic Modern styling) */}
-                        <div className="md:col-span-3 bg-white text-slate-900 border border-slate-200 rounded-3xl p-6 text-left relative overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300">
-                          {/* Top ribbon layout colors representing the party flag bands */}
-                          <div className="absolute top-0 left-0 right-0 h-1.5 bg-[#D10000]" />
-                          <div className="absolute top-1.5 left-0 right-0 h-1 bg-[#00ADEF]" />
+                        <div className="md:col-span-3 bg-white text-slate-900 border border-slate-200/80 rounded-3xl p-6 text-left relative overflow-hidden shadow-2xl hover:shadow-3xl transition-all duration-500 group">
+                          {/* Top ribbons representing national party values */}
+                          <div className="absolute top-0 left-0 right-0 h-1.5 bg-[#D10000] z-20" />
+                          <div className="absolute top-1.5 left-0 right-0 h-1 bg-[#00ADEF] z-20" />
                           
-                          {/* Inner subtle watermark vector pattern */}
-                          <div className="absolute -right-24 -top-24 w-80 h-80 bg-gradient-to-br from-sky-450/10 to-red-500/5 rounded-full blur-3xl pointer-events-none" />
+                          {/* Side security ribbons */}
+                          <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-[#00ADEF] opacity-75 hidden sm:block z-20" />
+                          <div className="absolute top-0 bottom-0 left-1.5 w-1 bg-[#D10000] opacity-75 hidden sm:block z-20" />
+
+                          {/* 1. Cyber Dot Mesh Grid Layer */}
+                          <div className="absolute inset-0 bg-[radial-gradient(#00ADEF18_1.2px,transparent_1.2px)] [background-size:14px_14px] pointer-events-none opacity-90 z-0" />
                           
+                          {/* 2. Atmospheric Cyber Neon Gradients in Red and Light Blue */}
+                          <div className="absolute -right-16 -top-16 w-80 h-80 bg-[#00ADEF]/8 rounded-full blur-3xl pointer-events-none z-0 mix-blend-multiply animate-pulse" />
+                          <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-[#D10000]/4 rounded-full blur-3xl pointer-events-none z-0 mix-blend-multiply" />
+                          
+                          {/* 3. Holographic Security Wave lines (custom pure CSS/SVG layout) */}
+                          <div className="absolute inset-x-0 bottom-12 h-16 pointer-events-none opacity-10 z-0 select-none">
+                            <svg className="w-full h-full" viewBox="0 0 400 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M0,10 C150,55 250,5 400,35 L400,60 L0,60 Z" fill="none" stroke="#00ADEF" strokeWidth="1.2" />
+                              <path d="M0,25 C120,5 280,45 400,10 L400,60 L0,60 Z" fill="none" stroke="#D10000" strokeWidth="0.8" />
+                            </svg>
+                          </div>
+
+                          {/* 4. Binary floating background security data telemetry */}
+                          <div className="absolute left-[34%] top-[24%] text-[5.5px] font-mono text-[#00ADEF]/20 tracking-wider pointer-events-none leading-relaxed select-none uppercase hidden sm:block z-0">
+                            01010110 01000101 01010010 01001001 01000101 01000100 <br/>
+                            APC NETWORK SECURITY CODE: #NG-282-99B <br/>
+                            NIMC DATALINK ACCESS CHECK: COMPLETED STATUS STATUS_OK // 256-BIT SECURE
+                          </div>
+
                           {/* Card Header styling */}
-                          <div className="flex justify-between items-start border-b border-sky-100 pb-4 mb-4 mt-2">
+                          <div className="flex justify-between items-start border-b border-sky-100 pb-4 mb-4 mt-2 relative z-10 bg-white/60 backdrop-blur-[1px] p-2 rounded-xl">
                             <div className="flex items-center space-x-3">
-                              <APCLogo className="w-10 h-10 shadow-md shrink-0 border border-sky-100 rounded-full p-0.5" />
+                              <APCLogo className="w-10 h-10 shadow-md shrink-0 border-2 border-sky-100 rounded-full p-0.5 bg-white transition-transform duration-300 group-hover:scale-110" />
                               <div>
                                 <h4 className="font-extrabold text-slate-950 text-xs tracking-tight">ALL PROGRESSIVES CONGRESS</h4>
                                 <p className="text-[7.5px] text-[#D10000] font-sans font-black tracking-widest uppercase">NATIONAL EMPOWERMENT REGISTER</p>
                               </div>
                             </div>
-                            <span className="bg-sky-50 text-[#0284C7] border border-sky-200 rounded font-mono font-black text-[8px] px-2 py-0.5 shadow-sm">
+                            <span className="bg-sky-50 text-[#0284C7] border border-sky-200 rounded-lg font-mono font-black text-[8px] px-2.5 py-0.5 shadow-sm">
                               SECURE CITIZEN
                             </span>
                           </div>
