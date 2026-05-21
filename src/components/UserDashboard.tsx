@@ -294,6 +294,107 @@ export default function UserDashboard({
     ctx.strokeRect(20, 20, w - 40, h - 40);
   };
 
+  const drawEpicPresetPassport = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    portraitUrl: string
+  ) => {
+    // 1. Fill beautiful elegant local modern background with Light Blue sky tint
+    const portraitGrad = ctx.createLinearGradient(x, y, x, y + h);
+    portraitGrad.addColorStop(0, "#F0F9FF"); // light blue sky base
+    portraitGrad.addColorStop(1, "#E0F2FE"); // sky gradient bottom
+    ctx.fillStyle = portraitGrad;
+    ctx.fillRect(x, y, w, h);
+
+    // 2. Add gorgeous background circular starburst or rays in light blue
+    ctx.strokeStyle = "rgba(0, 173, 239, 0.15)";
+    ctx.lineWidth = 1;
+    const cx = x + w / 2;
+    const cy = y + h * 0.4;
+    for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 12) {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(angle) * w * 0.6, cy + Math.sin(angle) * h * 0.6);
+      ctx.stroke();
+    }
+
+    // Draw a soft sun or halo behind the head
+    const isRedTheme = portraitUrl.includes("fill='%23D10000'") || portraitUrl.includes("Democratic Leader") || portraitUrl.includes("Strategic Vanguard");
+    ctx.fillStyle = isRedTheme ? "rgba(209, 0, 0, 0.08)" : "rgba(0, 173, 239, 0.08)";
+    ctx.beginPath();
+    ctx.arc(cx, cy, w * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. Draw human silhouette shoulders
+    // Draw jacket/shoulder paths
+    ctx.fillStyle = "#0F172A"; // elegant dark charcoal clothing
+    ctx.beginPath();
+    ctx.moveTo(cx - w * 0.42, y + h);
+    ctx.quadraticCurveTo(cx - w * 0.35, y + h * 0.65, cx - w * 0.15, y + h * 0.62);
+    ctx.lineTo(cx + w * 0.15, y + h * 0.62);
+    ctx.quadraticCurveTo(cx + w * 0.35, y + h * 0.65, cx + w * 0.42, y + h);
+    ctx.closePath();
+    ctx.fill();
+
+    // Draw neck
+    ctx.fillStyle = "#E2E8F0"; // sleek soft silhouette skin tone or neutral layout
+    ctx.fillRect(cx - w * 0.1, y + h * 0.48, w * 0.2, h * 0.18);
+
+    // Draw inner shirt collar (V-neck)
+    ctx.fillStyle = "#FFFFFF"; // clean white collar
+    ctx.beginPath();
+    ctx.moveTo(cx - w * 0.08, y + h * 0.62);
+    ctx.lineTo(cx, y + h * 0.72);
+    ctx.lineTo(cx + w * 0.08, y + h * 0.62);
+    ctx.closePath();
+    ctx.fill();
+
+    // Draw elegant red or light blue tie/sash across shirt
+    ctx.fillStyle = isRedTheme ? "#D10000" : "#00ADEF"; // Red or Light Blue tie
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, y + h * 0.68);
+    ctx.lineTo(cx + 6, y + h * 0.68);
+    ctx.lineTo(cx + 10, y + h * 0.95);
+    ctx.lineTo(cx - 10, y + h * 0.95);
+    ctx.closePath();
+    ctx.fill();
+
+    // Draw modern circular graphic head
+    ctx.fillStyle = "#CBD5E1"; // light modern grey head outline or clean mask outline
+    ctx.beginPath();
+    ctx.arc(cx, cy, w * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw a beautiful hair/cap silhouette on head
+    ctx.fillStyle = "#1E293B"; // Dark slate hair
+    if (portraitUrl.includes("Strategic Vanguard")) {
+      // Draw cap
+      ctx.beginPath();
+      ctx.arc(cx, cy - 2, w * 0.22, Math.PI, 0);
+      ctx.rect(cx - w * 0.22, cy - 10, w * 0.44, 8);
+      ctx.fill();
+    } else {
+      // Draw classic sweep hair
+      ctx.beginPath();
+      ctx.arc(cx, cy - 4, w * 0.22, Math.PI * 1.15, Math.PI * 1.85);
+      ctx.quadraticCurveTo(cx, cy - w * 0.3, cx - w * 0.22, cy - 4);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Add clean glass/glow lines inside portrait frame
+    ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + w * 0.35, y);
+    ctx.lineTo(x, y + h * 0.35);
+    ctx.closePath();
+    ctx.fill();
+  };
+
   const downloadIDCardPNG = async () => {
     setCardDownloading(true);
     try {
@@ -303,36 +404,50 @@ export default function UserDashboard({
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      // 1. Draw rounded card background slate colors
-      ctx.fillStyle = "#0B0F19";
+      // 1. Draw rounded card background slate colors (elegant classic white card)
+      ctx.fillStyle = "#FFFFFF";
       ctx.fillRect(0, 0, 640, 400);
 
-      // Gradient glow
+      // Subtle light blue and rose radial/linear gradient background glow 
       const bgGrad = ctx.createLinearGradient(0, 0, 640, 400);
-      bgGrad.addColorStop(0, "rgba(0, 135, 81, 0.18)"); // Green accent
-      bgGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.01)");
-      bgGrad.addColorStop(1, "rgba(209, 0, 0, 0.12)"); // Red accent
+      bgGrad.addColorStop(0, "#FFFFFF");
+      bgGrad.addColorStop(0.6, "#F8FAFC");
+      bgGrad.addColorStop(1, "#F0F9FF"); // light blue sky base
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, 640, 400);
 
-      // Grid background pattern
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+      // Classic security grid background pattern in low opacity Light Blue
+      ctx.strokeStyle = "rgba(0, 173, 239, 0.05)";
       ctx.lineWidth = 1;
-      for (let i = 0; i < 640; i += 40) {
+      for (let i = 0; i < 640; i += 30) {
         ctx.beginPath();
         ctx.moveTo(i, 0);
         ctx.lineTo(i, 400);
         ctx.stroke();
       }
+      for (let j = 0; j < 400; j += 30) {
+        ctx.beginPath();
+        ctx.moveTo(0, j);
+        ctx.lineTo(640, j);
+        ctx.stroke();
+      }
 
-      // 2. Solid Side Bar Accent
-      ctx.fillStyle = "#008751";
-      ctx.fillRect(0, 0, 14, 400);
+      // 2. Dual Side Ribbon of Light Blue and Red representing national pride
+      ctx.fillStyle = "#00ADEF"; // Light Blue vertical ribbon
+      ctx.fillRect(15, 15, 12, 370);
+      ctx.fillStyle = "#D10000"; // Red vertical ribbon
+      ctx.fillRect(27, 15, 12, 370);
+
+      // Draw top horizontal ribbon matching
+      ctx.fillStyle = "#D10000"; // Red top ribbon
+      ctx.fillRect(15, 15, 610, 8);
+      ctx.fillStyle = "#00ADEF"; // Light Blue top ribbon band
+      ctx.fillRect(15, 23, 610, 4);
 
       // 3. Draw APC Logo in the header
-      const logoX = 55;
-      const logoY = 55;
-      const logoR = 26;
+      const logoX = 90;
+      const logoY = 65;
+      const logoR = 24;
       
       ctx.save();
       ctx.beginPath();
@@ -354,54 +469,54 @@ export default function UserDashboard({
       
       // Text "APC"
       ctx.fillStyle = "#FFFFFF";
-      ctx.font = "bold 12px system-ui, sans-serif";
+      ctx.font = "bold 11px system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText("APC", logoX, logoY + logoR * 0.8);
 
       // Broom bunch
       ctx.strokeStyle = "#8B5A2B";
-      ctx.lineWidth = 1.4;
+      ctx.lineWidth = 1.2;
       ctx.fillStyle = "#D10000";
       ctx.beginPath();
-      ctx.arc(logoX, logoY - 2, 2.5, 0, Math.PI * 2);
+      ctx.arc(logoX, logoY - 2, 2, 0, Math.PI * 2);
       ctx.fill();
       
       ctx.beginPath();
       ctx.moveTo(logoX, logoY + 4);
-      ctx.lineTo(logoX - 8, logoY - 14);
+      ctx.lineTo(logoX - 7, logoY - 12);
       ctx.moveTo(logoX, logoY + 4);
-      ctx.lineTo(logoX, logoY - 16);
+      ctx.lineTo(logoX, logoY - 14);
       ctx.moveTo(logoX, logoY + 4);
-      ctx.lineTo(logoX + 8, logoY - 14);
+      ctx.lineTo(logoX + 7, logoY - 12);
       ctx.stroke();
 
       ctx.restore();
 
-      // Logo white trim
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.25)";
-      ctx.lineWidth = 2;
+      // Logo sky-blue trim
+      ctx.strokeStyle = "#00ADEF";
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.arc(logoX, logoY, logoR, 0, Math.PI * 2);
       ctx.stroke();
 
-      // 4. Upper Header Placement
-      ctx.fillStyle = "#FFFFFF";
-      ctx.font = "900 15px system-ui, sans-serif";
+      // 4. Upper Header Placement (Elegant classic black and red typography)
+      ctx.fillStyle = "#0F172A"; // Elegant deep charcoal 
+      ctx.font = "900 16px system-ui, sans-serif";
       ctx.textAlign = "left";
-      ctx.fillText("ALL PROGRESSIVES CONGRESS", 96, 47);
+      ctx.fillText("ALL PROGRESSIVES CONGRESS", 128, 56);
 
-      ctx.fillStyle = "#94A3B8";
+      ctx.fillStyle = "#D10000"; // Red highlight text
       ctx.font = "bold 9px monospace";
-      ctx.fillText("NATIONAL EMPOWERMENT REGISTER • CIVIC REGISTERED MEMBER", 96, 66);
+      ctx.fillText("NATIONAL EMPOWERMENT REGISTER • CIVIC REGISTERED MEMBER", 128, 73);
 
-      // Top Badge
-      ctx.fillStyle = "rgba(0, 135, 81, 0.15)";
-      ctx.strokeStyle = "rgba(0, 135, 81, 0.4)";
+      // Top Modern Rounded Badge
+      ctx.fillStyle = "#F0F9FF"; // Soft blue background
+      ctx.strokeStyle = "#38BDF8"; // Light Blue border
       ctx.lineWidth = 1;
-      const bX = 475;
-      const bY = 32;
-      const bW = 125;
-      const bH = 28;
+      const bX = 485;
+      const bY = 40;
+      const bW = 120;
+      const bH = 26;
       const bR = 6;
       ctx.beginPath();
       ctx.moveTo(bX + bR, bY);
@@ -417,46 +532,55 @@ export default function UserDashboard({
       ctx.fill();
       ctx.stroke();
 
-      ctx.fillStyle = "#10B981";
+      ctx.fillStyle = "#0284C7"; // Light Blue text
       ctx.font = "900 8.5px monospace";
       ctx.textAlign = "center";
-      ctx.fillText("VERIFIED CITIZEN", bX + bW / 2, bY + 17);
+      ctx.fillText("SECURE CITIZEN", bX + bW / 2, bY + 16);
 
       // Horizontal line divider
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(0, 173, 239, 0.2)";
+      ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(35, 95);
-      ctx.lineTo(605, 95);
+      ctx.moveTo(45, 100);
+      ctx.lineTo(605, 100);
       ctx.stroke();
 
-      // 5. User Profiles Row Draws
-      const textX = 215;
+      // 5. User Profiles Row Draws with high contrast design mapping
+      const textX = 225;
       const textY = 135;
-      const gapY = 44;
+      const gapY = 43;
 
       const profileParams = [
-        { title: "CITIZEN FULL NAME", data: currentUser.fullName.toUpperCase(), hue: "#FFFFFF", style: "bold 13px system-ui, sans-serif" },
-        { title: "MEMBERSHIP CARD ID", data: currentUser.membershipId || "APC-NG-000000", hue: "#10B981", style: "bold 13px monospace" },
-        { title: "COHORT AUDIT / STATE", data: `${currentUser.age} YEARS OLD / ${currentUser.state.toUpperCase()} STATE`, hue: "#CBD5E1", style: "bold 11px system-ui, sans-serif" },
-        { title: "PLATFORM INTEGRITY STATUS", data: "APPROVED SECURITY RECORD • NIMC CHECK PASSED", hue: "#94A3B8", style: "8px monospace" }
+        { title: "CITIZEN FULL NAME", data: currentUser.fullName.toUpperCase(), hue: "#0F172A", style: "bold 13px system-ui, sans-serif" },
+        { title: "MEMBERSHIP REGISTER ID", data: currentUser.membershipId || "APC-NG-000000", hue: "#0284C7", style: "bold 13px monospace" },
+        { title: "COHORT AUDIT / STATE", data: `${currentUser.age} YEARS OLD / ${currentUser.state.toUpperCase()} STATE`, hue: "#1E293B", style: "bold 11px system-ui, sans-serif" },
+        { title: "PLATFORM INTEGRITY STATUS", data: "APPROVED SECURITY RECORD • DIGITAL CHECK PASSED", hue: "#475569", style: "8px monospace" }
       ];
 
       profileParams.forEach((item, index) => {
         ctx.textAlign = "left";
-        ctx.fillStyle = "rgba(148, 163, 184, 0.75)";
+        ctx.fillStyle = "#D10000"; // Red labels for beautiful high contrast
         ctx.font = "bold 7.5px monospace";
         ctx.fillText(item.title, textX, textY + index * gapY);
 
         ctx.fillStyle = item.hue;
         ctx.font = item.style;
-        ctx.fillText(item.data, textX, textY + index * gapY + 17);
+        ctx.fillText(item.data, textX, textY + index * gapY + 16);
       });
 
-      // 6. QR Code Draws
+      // 6. QR Code Draws with Light Blue background and frame outline
       const sz = 105;
       const qX = 490;
       const qY = 135;
+
+      ctx.fillStyle = "#F8FAFC";
+      ctx.strokeStyle = "rgba(0, 173, 239, 0.25)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(qX - 6, qY - 6, sz + 12, sz + 12, 8) : ctx.rect(qX - 6, qY - 6, sz + 12, sz + 12);
+      ctx.fill();
+      ctx.stroke();
+
       ctx.fillStyle = "#FFFFFF";
       ctx.fillRect(qX, qY, sz, sz);
       
@@ -484,32 +608,41 @@ export default function UserDashboard({
         }
       }
 
-      ctx.fillStyle = "#FFFFFF";
+      ctx.fillStyle = "#F1F5F9";
       ctx.fillRect(qX + 6, qY + 93, 93, 9);
-      ctx.fillStyle = "#018751";
-      ctx.font = "900 6.5px monospace";
+      ctx.fillStyle = "#D10000"; // Red Text for NIMC QR indication
+      ctx.font = "900 6px monospace";
       ctx.textAlign = "center";
-      ctx.fillText("APC SCAN AUDIT", qX + 105 / 2, qY + 100);
+      ctx.fillText("NIMC QR AUDITED", qX + sz / 2, qY + 100);
 
-      // 7. Dark Bottom Secure Base Tape
-      ctx.fillStyle = "#111827";
-      ctx.fillRect(15, 360, 610, 40);
-      ctx.fillStyle = "#D10000"; // bottom red thin strip
-      ctx.fillRect(15, 396, 610, 4);
+      // 7. Red Bottom Secure Base Tape representing national emblem
+      ctx.fillStyle = "#D10000";
+      ctx.fillRect(15, 345, 610, 38);
 
-      ctx.fillStyle = "#64748B";
-      ctx.font = "8px monospace";
+      // Thin light blue topper band on ribbon
+      ctx.fillStyle = "#00ADEF";
+      ctx.fillRect(15, 345, 610, 3);
+
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "900 8.2px monospace";
       ctx.textAlign = "center";
-      ctx.fillText("Direct Financial Link • Renewed Hope National Social Intervention Program", 320, 381);
+      ctx.fillText("RENEWED HOPE NATIONAL SOCIAL EMPOWERMENT REGISTER", 320, 368);
 
-      // 8. Load User Portrait image or silhouette
-      const imgX = 45;
-      const imgY = 125;
-      const imgW = 140;
-      const imgH = 185;
+      // 8. Load User Portrait image or procedural canvas preset silhouette
+      const imgX = 55;
+      const imgY = 120;
+      const imgW = 135;
+      const imgH = 180;
 
-      if (currentUser.faceVerificationImage) {
+      const isSvgPreset = currentUser.faceVerificationImage && currentUser.faceVerificationImage.startsWith("data:image/svg+xml");
+
+      if (isSvgPreset) {
+        // Redraw preset completely using local context vectors, ensuring 0% canvas taint!
+        drawEpicPresetPassport(ctx, imgX, imgY, imgW, imgH, currentUser.faceVerificationImage);
+      } else if (currentUser.faceVerificationImage) {
         const img = new window.Image();
+        // Base64 user images are fully safe. Let's add crossOrigin just in case
+        img.crossOrigin = "anonymous";
         img.src = currentUser.faceVerificationImage;
         await new Promise<void>((resolve) => {
           img.onload = () => {
@@ -530,16 +663,20 @@ export default function UserDashboard({
         drawFallbackSilhouette(ctx, imgX, imgY, imgW, imgH);
       }
 
-      // Draw shiny border
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
-      ctx.lineWidth = 3;
+      // Draw modern dual-colored border line for the passport portrait
+      ctx.strokeStyle = "#38BDF8"; // Sky Blue outer ring
+      ctx.lineWidth = 3.5;
       ctx.strokeRect(imgX, imgY, imgW, imgH);
 
-      // Corner Passport stamp
+      ctx.strokeStyle = "#D10000"; // Red inner safety line
+      ctx.lineWidth = 1;
+      ctx.strokeRect(imgX + 3.5, imgY + 3.5, imgW - 7, imgH - 7);
+
+      // Corner Passport stamp in Light Blue / Red
       ctx.save();
       ctx.translate(imgX + 22, imgY + 14);
       ctx.rotate(-Math.PI / 12);
-      ctx.fillStyle = "rgba(16, 185, 129, 0.9)";
+      ctx.fillStyle = "#D10000"; // Elegant red stamp background
       ctx.fillRect(-22, -8, 44, 14);
       ctx.strokeStyle = "#FFFFFF";
       ctx.lineWidth = 0.8;
@@ -547,7 +684,7 @@ export default function UserDashboard({
       ctx.fillStyle = "#FFFFFF";
       ctx.font = "bold 6.5px monospace";
       ctx.textAlign = "center";
-      ctx.fillText("PASSPORT", 0, 1.5);
+      ctx.fillText("APPROVED", 0, 1.5);
       ctx.restore();
 
       // Trigger automatic high quality PNG download
@@ -567,13 +704,13 @@ export default function UserDashboard({
 
   const drawFallbackSilhouette = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => {
     const slGrad = ctx.createLinearGradient(x, y, x, y + h);
-    slGrad.addColorStop(0, "#1F2937");
-    slGrad.addColorStop(1, "#111827");
+    slGrad.addColorStop(0, "#F0F9FF"); // Light Blue base
+    slGrad.addColorStop(1, "#E0F2FE");
     ctx.fillStyle = slGrad;
     ctx.fillRect(x, y, w, h);
 
-    // Silhouette
-    ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
+    // Silhouette neck/head outlines
+    ctx.fillStyle = "rgba(0, 173, 239, 0.15)";
     ctx.beginPath();
     ctx.arc(x + w / 2, y + h * 0.38, w * 0.22, 0, Math.PI * 2);
     ctx.fill();
@@ -581,11 +718,11 @@ export default function UserDashboard({
     ctx.arc(x + w / 2, y + h + 15, w * 0.45, Math.PI, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
-    ctx.font = "bold 7px monospace";
+    ctx.fillStyle = "#D10000"; // Red text details
+    ctx.font = "bold 8px monospace";
     ctx.textAlign = "center";
     ctx.fillText("PHOTO PORTRAIT", x + w / 2, y + h - 25);
-    ctx.fillText("NOT ASSIGNED", x + w / 2, y + h - 14);
+    ctx.fillText("REQUIRED", x + w / 2, y + h - 14);
   };
 
   // NIN Verification lookup simulation
@@ -1366,21 +1503,26 @@ export default function UserDashboard({
                     <div className="space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                         
-                        {/* Polished HTML APC Digital Identification card layout */}
-                        <div className="md:col-span-3 bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100 border border-slate-950 rounded-3xl p-6 text-left relative overflow-hidden shadow-lg">
-                          <div className="absolute inset-0 bg-gradient-to-tr from-[#008751]/10 via-transparent to-[#D10000]/10 pointer-events-none" />
+                        {/* Polished HTML APC Digital Identification card layout (Red, White, and Light Blue Classic Modern styling) */}
+                        <div className="md:col-span-3 bg-white text-slate-900 border border-slate-200 rounded-3xl p-6 text-left relative overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300">
+                          {/* Top ribbon layout colors representing the party flag bands */}
+                          <div className="absolute top-0 left-0 right-0 h-1.5 bg-[#D10000]" />
+                          <div className="absolute top-1.5 left-0 right-0 h-1 bg-[#00ADEF]" />
+                          
+                          {/* Inner subtle watermark vector pattern */}
+                          <div className="absolute -right-24 -top-24 w-80 h-80 bg-gradient-to-br from-sky-450/10 to-red-500/5 rounded-full blur-3xl pointer-events-none" />
                           
                           {/* Card Header styling */}
-                          <div className="flex justify-between items-start border-b border-white/10 pb-4 mb-4">
-                            <div className="flex items-center space-x-2">
-                              <APCLogo className="w-9 h-9 shadow-md shrink-0" />
+                          <div className="flex justify-between items-start border-b border-sky-100 pb-4 mb-4 mt-2">
+                            <div className="flex items-center space-x-3">
+                              <APCLogo className="w-10 h-10 shadow-md shrink-0 border border-sky-100 rounded-full p-0.5" />
                               <div>
-                                <h4 className="font-extrabold text-white text-[11px] tracking-tight">NATIONAL EMPOWERMENT NETWORK</h4>
-                                <p className="text-[7.5px] text-slate-400 font-mono">Digital Membership Register</p>
+                                <h4 className="font-extrabold text-slate-950 text-xs tracking-tight">ALL PROGRESSIVES CONGRESS</h4>
+                                <p className="text-[7.5px] text-[#D10000] font-sans font-black tracking-widest uppercase">NATIONAL EMPOWERMENT REGISTER</p>
                               </div>
                             </div>
-                            <span className="bg-[#008751]/20 text-[#008751] border border-[#008751]/30 rounded font-mono font-bold text-[8px] px-1.5 py-0.5">
-                              CIVIC MEMBER
+                            <span className="bg-sky-50 text-[#0284C7] border border-sky-200 rounded font-mono font-black text-[8px] px-2 py-0.5 shadow-sm">
+                              SECURE CITIZEN
                             </span>
                           </div>
 
@@ -1389,74 +1531,78 @@ export default function UserDashboard({
                             
                             {/* Passport Portrait Area */}
                             <div className="sm:col-span-4 flex justify-center">
-                              <div className="relative w-24 h-32 bg-slate-900 rounded-xl overflow-hidden border border-white/20 shadow-inner group">
+                              <div className="relative w-24 h-32 bg-sky-50 rounded-xl overflow-hidden border-2 border-[#00ADEF] p-1 shadow-md hover:scale-103 transition-transform duration-300">
                                 {currentUser.faceVerificationImage ? (
-                                  <img 
-                                    src={currentUser.faceVerificationImage} 
-                                    alt="Citizen Portrait" 
-                                    className="w-full h-full object-cover"
-                                    referrerPolicy="no-referrer"
-                                  />
+                                  <div className="w-full h-full rounded-lg overflow-hidden relative">
+                                    <img 
+                                      src={currentUser.faceVerificationImage} 
+                                      alt="Citizen Portrait" 
+                                      className="w-full h-full object-cover"
+                                      referrerPolicy="no-referrer"
+                                    />
+                                    <div className="absolute inset-0 border border-[#D10000]/20 rounded-md pointer-events-none" />
+                                  </div>
                                 ) : (
-                                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 font-mono text-[8px] text-center p-2 bg-gradient-to-b from-slate-900 to-slate-950">
-                                    <User className="w-8 h-8 text-slate-600 mb-1" />
-                                    <span>NO PHOTO</span>
-                                    <span>ASSIGNED</span>
+                                  <div className="w-full h-full flex flex-col items-center justify-center text-sky-400 font-mono text-[8px] text-center p-2 bg-gradient-to-b from-sky-50 to-sky-100">
+                                    <User className="w-8 h-8 text-sky-500 mb-1" />
+                                    <span className="text-[#D10000] font-bold">NO PHOTO</span>
+                                    <span className="text-[#D10000] font-bold">ASSIGNED</span>
                                   </div>
                                 )}
-                                <div className="absolute top-1.5 left-1.5 bg-emerald-600 text-white text-[6px] font-bold uppercase py-0.5 px-1 rounded shadow-sm border border-emerald-500 animate-pulse">
-                                  PASSPORT
+                                <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 bg-[#D10000] text-white text-[6.5px] font-black uppercase py-0.5 px-2 rounded-full shadow-sm animate-pulse whitespace-nowrap">
+                                  APPROVED
                                 </div>
                               </div>
                             </div>
 
                             {/* Text Info Columns */}
-                            <div className="sm:col-span-5 space-y-2.5 font-mono text-[9px] text-left">
+                            <div className="sm:col-span-5 space-y-2.5 font-sans text-left">
                               <div>
-                                <p className="text-[7.5px] text-slate-400">CITIZEN FULL NAME</p>
-                                <p className="text-white font-black tracking-wide uppercase text-[11px] truncate">{currentUser.fullName}</p>
+                                <p className="text-[7.5px] text-[#D10000] font-bold font-mono tracking-wider">CITIZEN FULL NAME</p>
+                                <p className="text-slate-900 font-black tracking-wide uppercase text-xs truncate">{currentUser.fullName}</p>
                               </div>
 
                               <div>
-                                <p className="text-[7.5px] text-slate-400">MEMBER REGISTER ID</p>
-                                <p className="text-[#008751] font-black text-[11px] tracking-wider">{currentUser.membershipId}</p>
+                                <p className="text-[7.5px] text-[#D10000] font-bold font-mono tracking-wider">MEMBER REGISTER ID</p>
+                                <p className="text-[#0284C7] font-black text-xs font-mono tracking-wider">{currentUser.membershipId}</p>
                               </div>
 
                               <div className="grid grid-cols-2 gap-1.5">
                                 <div>
-                                  <p className="text-[7.5px] text-slate-400">COHORT AGE</p>
-                                  <p className="text-slate-300 font-bold uppercase truncate">{currentUser.age} Yrs old</p>
+                                  <p className="text-[7.5px] text-[#D10000] font-bold font-mono tracking-wider">COHORT AGE</p>
+                                  <p className="text-slate-700 font-bold text-[10px] truncate">{currentUser.age} Yrs old</p>
                                 </div>
                                 <div>
-                                  <p className="text-[7.5px] text-slate-400">STATE FLAG</p>
-                                  <p className="text-slate-300 font-bold uppercase truncate">{currentUser.state}</p>
+                                  <p className="text-[7.5px] text-[#D10000] font-bold font-mono tracking-wider">STATE FLAG</p>
+                                  <p className="text-slate-700 font-extrabold text-[10px] uppercase truncate">{currentUser.state}</p>
                                 </div>
                               </div>
 
-                              <div className="pt-2 border-t border-white/10 flex items-center space-x-1">
-                                <ShieldCheck className="w-3 h-3 text-[#008751]" />
-                                <span className="text-[7px] text-slate-400 font-mono">SECURE NIMC REGISTERED</span>
+                              <div className="pt-2 border-t border-sky-105 flex items-center space-x-1.5">
+                                <ShieldCheck className="w-3.5 h-3.5 text-[#0284C7]" />
+                                <span className="text-[7.5px] text-slate-500 font-bold font-mono">SECURE DIGITAL SYSTEM</span>
                               </div>
                             </div>
 
-                            {/* Standard Verified QR */}
-                            <div className="sm:col-span-3 bg-white p-1.5 rounded-xl text-center border border-slate-750 flex flex-col items-center justify-center space-y-1 shrink-0">
-                              <QrCode className="w-12 h-12 text-slate-950" />
-                              <span className="text-[5.5px] text-slate-600 font-bold uppercase tracking-wider font-mono">Scan Audit ID</span>
+                            {/* Standard Verified QR to mimic NIMC auditing with Light Blue theme styling */}
+                            <div className="sm:col-span-3 bg-slate-50 p-2 rounded-2xl border border-sky-100 flex flex-col items-center justify-center space-y-1 shrink-0 shadow-inner">
+                              <QrCode className="w-12 h-12 text-slate-900" />
+                              <span className="text-[6.5px] text-[#D10000] font-extrabold uppercase tracking-wider font-mono">NIMC SCAN ID</span>
                             </div>
 
                           </div>
 
-                          <div className="mt-5 pt-3.5 border-t border-white/10 flex justify-between items-center text-[10px] text-slate-400 font-mono">
+                          {/* Footer with actions */}
+                          <div className="mt-5 pt-3.5 border-t border-sky-100 flex justify-between items-center text-[10px] text-slate-500 font-mono">
                             <button
                               onClick={downloadIDCardPNG}
                               disabled={cardDownloading}
-                              className="text-[#008751] hover:text-[#007345] flex items-center space-x-1 font-bold bg-white border border-slate-200 px-3 py-1 rounded transition-colors cursor-pointer"
+                              className="text-white hover:bg-sky-600 flex items-center space-x-1.5 font-bold bg-[#00ADEF] px-4 py-1.8 rounded-xl transition-all cursor-pointer shadow-sm active:scale-97"
                             >
-                              <Download className="w-3 h-3 text-[#008751]" />
+                              <Download className="w-3.5 h-3.5 text-white" />
                               <span>{cardDownloading ? "Generating PNG..." : "Download Official ID"}</span>
                             </button>
-                            <span className="text-[9px]">ID Verified: 2026</span>
+                            <span className="text-[9px] font-black text-[#D10000]">RENEWED HOPE 2026</span>
                           </div>
 
                         </div>
