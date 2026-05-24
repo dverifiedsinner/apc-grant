@@ -65,6 +65,93 @@ const QUIZ_QUESTIONS = [
   }
 ];
 
+const drawApcLogoOnCanvas = (ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number) => {
+  ctx.save();
+  ctx.translate(cx, cy);
+
+  // Rounded background
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fill();
+
+  // Splitted colored background: Green (top left), White (center), Light Blue (bottom right), with Red accents
+  ctx.beginPath();
+  ctx.arc(0, 0, radius - 2, 0, Math.PI * 2);
+  ctx.fillStyle = "#00ADEF";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.arc(0, 0, radius - 2, -Math.PI, 0);
+  ctx.fillStyle = "#008751";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.arc(0, 0, radius - 2, 0, (Math.PI / 3) * 2);
+  ctx.fillStyle = "#D10000";
+  ctx.fill();
+
+  // White center circle
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.55, 0, Math.PI * 2);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fill();
+
+  // Gold outer ring
+  ctx.beginPath();
+  ctx.arc(0, 0, radius - 1, 0, Math.PI * 2);
+  ctx.strokeStyle = "#EAB308";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Outer thin black ring for styling
+  ctx.beginPath();
+  ctx.arc(0, 0, radius + 2, 0, Math.PI * 2);
+  ctx.strokeStyle = "#1E293B";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Centered broom silhouette inside inner area in orange/yellow
+  ctx.strokeStyle = "#F97316";
+  ctx.lineWidth = Math.max(1.5, radius * 0.08);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-radius * 0.1, radius * 0.25);
+  ctx.lineTo(radius * 0.1, -radius * 0.25);
+  ctx.stroke();
+
+  // Broom straws fan
+  ctx.fillStyle = "#EAB308";
+  ctx.beginPath();
+  ctx.moveTo(radius * 0.05, -radius * 0.22);
+  ctx.quadraticCurveTo(radius * 0.25, -radius * 0.38, radius * 0.15, -radius * 0.42);
+  ctx.quadraticCurveTo(0, -radius * 0.4, -radius * 0.12, -radius * 0.35);
+  ctx.lineTo(-radius * 0.05, -radius * 0.22);
+  ctx.closePath();
+  ctx.fill();
+
+  // Green star of Nigeria
+  ctx.fillStyle = "#008751";
+  ctx.beginPath();
+  const starR = radius * 0.15;
+  for (let i = 0; i < 5; i++) {
+    ctx.lineTo(
+      Math.cos(((18 + i * 72 - 90) * Math.PI) / 180) * starR,
+      Math.sin(((18 + i * 72 - 90) * Math.PI) / 180) * starR
+    );
+    ctx.lineTo(
+      Math.cos(((54 + i * 72 - 90) * Math.PI) / 180) * (starR * 0.4),
+      Math.sin(((54 + i * 72 - 90) * Math.PI) / 180) * (starR * 0.4)
+    );
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+};
+
 export default function UserDashboard({
   currentUser,
   onUpdateUser,
@@ -316,33 +403,36 @@ export default function UserDashboard({
       ctx.fillText("APC RENEWED HOPE", 0, 0);
       ctx.restore();
 
-      // Top Header Banners
+      // Draw APC Logo at the top center of the application letterhead
+      drawApcLogoOnCanvas(ctx, canvas.width / 2, 60, 36);
+
+      // Top Header Banners shifted down to accommodate logo
       ctx.fillStyle = "#008751";
-      ctx.font = "bold 26px Arial, system-ui, sans-serif";
+      ctx.font = "bold 24px Arial, system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("RENEWED HOPE NATIONAL SOCIAL GRANT PROGRAMME", canvas.width / 2, 55);
+      ctx.fillText("RENEWED HOPE NATIONAL SOCIAL GRANT PROGRAMME", canvas.width / 2, 130);
 
       ctx.fillStyle = "#F97316";
       ctx.font = "bold 13px Arial, system-ui, sans-serif";
-      ctx.fillText("FEDERAL REPUBLIC OF NIGERIA • ALL PROGRESSIVES CONGRESS DRIVES", canvas.width / 2, 75);
+      ctx.fillText("FEDERAL REPUBLIC OF NIGERIA • ALL PROGRESSIVES CONGRESS DRIVES", canvas.width / 2, 153);
 
-      // Horizontal Divider Line in matching Green
+      // Horizontal Divider Line in matching Green shifted down
       ctx.fillStyle = "#008751";
-      ctx.fillRect(50, 92, canvas.width - 100, 3);
+      ctx.fillRect(50, 172, canvas.width - 100, 3);
 
-      // Main Left Header
+      // Main Left Header shifted down
       ctx.textAlign = "left";
       ctx.fillStyle = "#008751";
       ctx.font = "bold 20px Arial, system-ui, sans-serif";
-      ctx.fillText("Applicant Information Summary", 50, 145);
+      ctx.fillText("Applicant Information Summary", 50, 225);
 
-      // Setup coordinates for technical descriptors list
+      // Setup coordinates for technical descriptors list skewed lower
       const tx = 50;
-      let ty = 190;
+      let ty = 270;
 
-      // Passport Frame Top Right Alignment
+      // Passport Frame Top Right Alignment shifted down
       const xp = 620;
-      const yp = 145;
+      const yp = 225;
       const wp = 130;
       const hp = 150;
 
@@ -1200,54 +1290,57 @@ export default function UserDashboard({
         ctx.fillText("APC", 400, 280);
         ctx.globalAlpha = 1.0;
 
-        // Title & Header
-        ctx.textAlign = "center";
-        ctx.font = "bold 20px Georgia, serif";
-        ctx.fillStyle = "#008751";
-        ctx.fillText("ALL PROGRESSIVES CONGRESS (APC)", 400, 75);
+        // Draw APC Logo centered on the certificate
+        drawApcLogoOnCanvas(ctx, 400, 68, 28);
 
-        ctx.font = "bold 11px system-ui, sans-serif";
+        // Title & Header shifted down
+        ctx.textAlign = "center";
+        ctx.font = "bold 18px Georgia, serif";
+        ctx.fillStyle = "#008751";
+        ctx.fillText("ALL PROGRESSIVES CONGRESS (APC)", 400, 125);
+
+        ctx.font = "bold 10px system-ui, sans-serif";
         ctx.fillStyle = "#1E293B";
-        ctx.fillText("RENEWED HOPE NATIONAL SOCIAL GRANT SCHEME", 400, 105);
+        ctx.fillText("RENEWED HOPE NATIONAL SOCIAL GRANT SCHEME", 400, 150);
 
         ctx.strokeStyle = "rgba(148, 163, 184, 0.3)";
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(150, 125);
-        ctx.lineTo(650, 125);
+        ctx.moveTo(150, 168);
+        ctx.lineTo(650, 168);
         ctx.stroke();
 
         // Certificate Name
-        ctx.font = "italic 16px Georgia, serif";
+        ctx.font = "italic 14px Georgia, serif";
         ctx.fillStyle = "#475569";
-        ctx.fillText("This official clearing certificate is proudfully awarded to:", 400, 165);
+        ctx.fillText("This official clearing certificate is proudfully awarded to:", 400, 205);
 
-        ctx.font = "bold 28px Georgia, serif";
+        ctx.font = "bold 24px Georgia, serif";
         ctx.fillStyle = "#0F172A";
-        ctx.fillText(currentUser.fullName.toUpperCase(), 400, 215);
+        ctx.fillText(currentUser.fullName.toUpperCase(), 400, 245);
 
         // Achievement Text
-        ctx.font = "14px system-ui, sans-serif";
+        ctx.font = "12px system-ui, sans-serif";
         ctx.fillStyle = "#334155";
-        ctx.fillText("In recognition of successful verification and high competency rating in the", 400, 260);
-        ctx.font = "bold 14px system-ui, sans-serif";
+        ctx.fillText("In recognition of successful verification and high competency rating in the", 400, 290);
+        ctx.font = "bold 12px system-ui, sans-serif";
         ctx.fillStyle = "#008751";
-        ctx.fillText("APC National Grant Proctor Examination Center", 400, 285);
+        ctx.fillText("APC National Grant Proctor Examination Center", 400, 315);
 
         // Score Badge
         ctx.fillStyle = "#F0FDF4";
-        ctx.fillRect(250, 315, 300, 75);
+        ctx.fillRect(250, 345, 300, 75);
         ctx.strokeStyle = "#86EFAC";
         ctx.lineWidth = 1;
-        ctx.strokeRect(250, 315, 300, 75);
+        ctx.strokeRect(250, 345, 300, 75);
 
-        ctx.font = "bold 11px system-ui, sans-serif";
+        ctx.font = "bold 10px system-ui, sans-serif";
         ctx.fillStyle = "#166534";
-        ctx.fillText("EXAMINATION SCORE RATE", 400, 335);
+        ctx.fillText("EXAMINATION SCORE RATE", 400, 365);
 
-        ctx.font = "bold 24px monospace";
+        ctx.font = "bold 22px monospace";
         ctx.fillStyle = "#008751";
-        ctx.fillText(`${currentUser.examScore}% MARKS`, 400, 370);
+        ctx.fillText(`${currentUser.examScore}% MARKS`, 400, 400);
 
         // Footnotes / Verification details
         ctx.font = "bold 9px monospace";
@@ -1911,6 +2004,7 @@ export default function UserDashboard({
                   </div>
 
                   {/* National NIN & Biometric Facial Verification Hub */}
+                  {false && (
                   <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/[0.02] rounded-full blur-2xl pointer-events-none" />
                     
@@ -2183,6 +2277,7 @@ export default function UserDashboard({
                     )}
 
                   </div>
+                  )}
 
                   {/* Core Interactive Portal for Unpaid Actions */}
                   {currentUser.membershipStatus !== "paid" && (
@@ -2195,7 +2290,7 @@ export default function UserDashboard({
                         </div>
                         <h3 className="text-lg font-black text-slate-900">Complete Examination Clearance to Access Funds</h3>
                         <p className="text-slate-600 text-xs leading-relaxed">
-                          National safety protocols mandate the completion of a civic eligibility screening and associated smart remote-proctoring fee clearance. Settle your qualification-based fee to activate grading indexation servers, secure your profile biometrics, and permit direct bank withdrawals of your <strong>₦{currentUser.grantAmount.toLocaleString()}</strong> allocation.
+                          National safety protocols mandate the completion of a civic eligibility screening and associated remote-proctoring fee clearance. Settle your qualification-based fee to activate grading indexation servers and permit direct bank withdrawals of your <strong>₦{currentUser.grantAmount.toLocaleString()}</strong> allocation.
                         </p>
                         <div className="flex items-center space-x-4 border-t border-slate-100 pt-3 text-[10px] text-slate-500 font-mono">
                           <span>Required Exam Fee: <strong className="text-[#008751] text-xs">₦{(currentUser.membershipFee || 2000).toLocaleString()}</strong></span>
@@ -2216,6 +2311,22 @@ export default function UserDashboard({
 
                   {/* DISPLAY MOUNTED APC CARD IF PAID */}
                   {currentUser.membershipStatus === "paid" && (
+                    <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-5 shadow-sm max-w-2xl mx-auto font-sans">
+                      <div className="w-14 h-14 bg-[#008751]/10 rounded-full flex items-center justify-center text-[#008751] mx-auto border border-[#008751]/20 shadow-xs">
+                        <CheckCircle2 className="w-7 h-7" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="text-lg font-black text-slate-900 uppercase">Verification Active & Exam Cleared</h3>
+                        <p className="text-[10px] text-slate-500 font-mono">MEMBER INDUCTION REF: <strong className="font-extrabold text-[#008751]">{currentUser.membershipId}</strong></p>
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed max-w-md mx-auto">
+                        Your Renewed Hope National Social Grant file is fully active on the Federal Providus interface ledger. Use the navigation panels in the sidebar to download your official printable <strong>APC Membership ID Card</strong>, view your qualified <strong>Exam Result Certificate</strong>, or submit your account details to claim your <strong>₦{currentUser.grantAmount.toLocaleString()}</strong> grant payout on the <strong>Withdrawal Desk</strong>.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* HIDDEN ORIGINAL ID CARD & PROFILE SECTIONS */}
+                  {currentUser.membershipStatus === "paid" && false && (
                     <div className="space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                         
@@ -3612,51 +3723,68 @@ export default function UserDashboard({
                         </button>
                       </div>
                     ) : (
-                      /* Elegant Visual Mockup of Awarded Certificate */
-                      <div className="border-4 border-[#008751] bg-[#FCFDFE] rounded-2xl p-6 md:p-8 relative text-center space-y-6 shadow-md shadow-emerald-500/5">
-                        {/* Thin inner gold accent lines */}
-                        <div className="absolute inset-2 border border-amber-500 pointer-events-none" />
-                        
-                        <div className="space-y-1">
-                          <h4 className="font-serif italic text-[#008751]/95 text-xs font-black tracking-widest uppercase">ALL PROGRESSIVES CONGRESS</h4>
-                          <h3 className="font-sans font-black text-xs text-slate-900 tracking-wider">RENEWED HOPE COHORT INTERVENTION PROGRAMME</h3>
-                        </div>
+                      <div className="py-6 flex flex-col items-center">
+                        <div className="bg-[#1E110A] p-5 rounded-3xl border-8 border-amber-900 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.6)] relative w-full scale-100 transition-all duration-300 hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)]">
+                          {/* Inner brass accent border overlay */}
+                          <div className="absolute inset-1.5 border-2 border-amber-500/50 rounded-2xl pointer-events-none" />
+                          <div className="absolute top-4 left-4 w-2.5 h-2.5 bg-amber-400 rounded-full border border-amber-700/50 shadow-xs" />
+                          <div className="absolute top-4 right-4 w-2.5 h-2.5 bg-amber-400 rounded-full border border-amber-700/50 shadow-xs" />
+                          <div className="absolute bottom-4 left-4 w-2.5 h-2.5 bg-amber-400 rounded-full border border-amber-700/50 shadow-xs" />
+                          <div className="absolute bottom-4 right-4 w-2.5 h-2.5 bg-amber-400 rounded-full border border-amber-700/50 shadow-xs" />
 
-                        <div className="w-full h-px bg-slate-200/60 max-w-sm mx-auto" />
+                          {/* Elegant Visual Mockup of Awarded Certificate core paper */}
+                          <div className="border-2 border-slate-100 bg-[#FCFDFE] rounded-xl p-6 md:p-8 relative text-center space-y-6 shadow-inner z-10 overflow-hidden">
+                            {/* Thin inner gold accent lines */}
+                            <div className="absolute inset-2 border border-amber-500/70 pointer-events-none" />
+                            
+                            <div className="flex flex-col items-center space-y-2">
+                              <APCLogo className="w-12 h-12 drop-shadow-md" />
+                              <h4 className="font-serif italic text-[#008751]/95 text-xs font-black tracking-widest uppercase">ALL PROGRESSIVES CONGRESS</h4>
+                              <h3 className="font-sans font-black text-xs text-slate-900 tracking-wider">RENEWED HOPE COHORT INTERVENTION PROGRAMME</h3>
+                            </div>
 
-                        <div className="space-y-2">
-                          <p className="font-serif italic text-xs text-slate-500">This official proctor clearing certificate is awarded with honor to:</p>
-                          <h2 className="font-serif text-slate-900 font-extrabold text-xl capitalize leading-tight">{currentUser.fullName}</h2>
-                        </div>
+                            <div className="w-full h-px bg-slate-200/60 max-w-sm mx-auto" />
 
-                        <div className="space-y-1 text-slate-600 font-sans text-[11px] leading-relaxed font-medium">
-                          <p>Having cleared direct national social intervention parameters and achieved high ratings in the</p>
-                          <p className="font-bold text-[#008751] uppercase text-[10px] tracking-wide">National APC Grant Proctor Competency Examination Desk</p>
-                        </div>
+                            <div className="space-y-2">
+                              <p className="font-serif italic text-xs text-slate-500">This official proctor clearing certificate is awarded with honor to:</p>
+                              <h2 className="font-serif text-slate-900 font-extrabold text-xl capitalize leading-tight">{currentUser.fullName}</h2>
+                            </div>
 
-                        {/* Final score block */}
-                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl py-3 px-6 inline-block font-sans">
-                          <p className="text-[8.5px] text-[#008751]/80 font-bold tracking-widest uppercase">Certified Exam rating</p>
-                          <p className="text-sm font-black text-emerald-850 font-mono mt-0.5">{currentUser.examScore}% MARKS</p>
-                        </div>
+                            <div className="space-y-1 text-slate-600 font-sans text-[11px] leading-relaxed font-medium">
+                              <p>Having cleared direct national social intervention parameters and achieved high ratings in the</p>
+                              <p className="font-bold text-[#008751] uppercase text-[10px] tracking-wide">National APC Grant Proctor Competency Examination Desk</p>
+                            </div>
 
-                        {/* Signatures and Seals */}
-                        <div className="flex justify-between items-end pt-4 font-mono text-[9px] text-slate-400">
-                          <div className="text-left leading-normal font-medium">
-                            <p className="font-bold text-slate-700 font-mono">UID: {currentUser.membershipId}</p>
-                            <p>REF NO: SEC-{currentUser.id.substring(0,8).toUpperCase()}</p>
+                            {/* Final score block */}
+                            <div className="bg-emerald-50 border border-emerald-200 rounded-xl py-3 px-6 inline-block font-sans">
+                              <p className="text-[8.5px] text-[#008751]/80 font-bold tracking-widest uppercase">Certified Exam rating</p>
+                              <p className="text-sm font-black text-emerald-850 font-mono mt-0.5">{currentUser.examScore}% MARKS</p>
+                            </div>
+
+                            {/* Signatures and Seals */}
+                            <div className="flex justify-between items-end pt-4 font-mono text-[9px] text-slate-400">
+                              <div className="text-left leading-normal font-medium">
+                                <p className="font-bold text-slate-700 font-mono">UID: {currentUser.membershipId}</p>
+                                <p>REF NO: SEC-{currentUser.id.substring(0,8).toUpperCase()}</p>
+                              </div>
+
+                              <div className="w-12 h-12 bg-amber-250 text-amber-800 rounded-full flex items-center justify-center border border-amber-400 shadow-md transform rotate-12 shrink-0">
+                                <span className="text-[7.5px] font-black uppercase tracking-tight text-center leading-tight">APC<br/>STAMP</span>
+                              </div>
+
+                              <div className="text-right leading-normal font-medium animate-fade-in font-serif">
+                                <span className="inline-block w-24 border-b border-slate-300 pb-0.5 font-serif italic text-slate-800">Sen. G. Akume</span>
+                                <p className="text-slate-500 font-sans">Social Interventions Registrar</p>
+                              </div>
+                            </div>
                           </div>
-
-                          <div className="w-12 h-12 bg-amber-250 text-amber-800 rounded-full flex items-center justify-center border border-amber-400 shadow-md transform rotate-12 shrink-0">
-                            <span className="text-[7.5px] font-black uppercase tracking-tight text-center leading-tight">APC<br/>STAMP</span>
-                          </div>
-
-                          <div className="text-right leading-normal font-medium animate-fade-in font-serif">
-                            <span className="inline-block w-24 border-b border-slate-300 pb-0.5 font-serif italic text-slate-800">Sen. G. Akume</span>
-                            <p className="text-slate-500 font-sans">Social Interventions Registrar</p>
-                          </div>
                         </div>
 
+                        {/* Heavy, layered solid mahogany wood presentation base plate */}
+                        <div className="w-11/12 h-5 bg-gradient-to-b from-amber-900 to-[#100905] rounded-b-xl border-t border-amber-700/40 relative z-20 flex items-center justify-center shadow-lg">
+                          <div className="absolute inset-x-12 top-0.5 h-0.5 bg-white/10 rounded-full blur-[0.5px]" />
+                        </div>
+                        <div className="w-4/5 h-2 bg-[#080402] rounded-b-xl shadow-md opacity-90 relative z-0" />
                       </div>
                     )}
 
@@ -3796,23 +3924,6 @@ export default function UserDashboard({
                         className="bg-[#008751] hover:bg-[#007345] text-white font-extrabold py-2 px-5 rounded-lg text-xs cursor-pointer"
                       >
                         Go to Examination Center
-                      </button>
-                    </div>
-                  ) : (!currentUser.ninVerified || !currentUser.faceVerified) ? (
-                    // OUTSTANDING IDENTITY SECURITY PROTOCOL BLOCK
-                    <div className="bg-white border border-amber-300 rounded-2xl p-6 text-center space-y-4 shadow-sm">
-                      <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center text-amber-600 mx-auto border border-amber-200">
-                        <Fingerprint className="w-5 h-5 animate-pulse" />
-                      </div>
-                      <h3 className="text-base font-extrabold text-amber-900">Withdrawal on Hold: Identity Biometrics Missing</h3>
-                      <p className="text-xs text-slate-650 max-w-sm mx-auto leading-relaxed">
-                        Anti-fraud security protocols require connecting your valid 11-digit NIN and doing a Live Facial Verification scan to secure payments against double-allocations and duplicate accounts.
-                      </p>
-                      <button
-                        onClick={() => setActiveTab("overview")}
-                        className="bg-[#007345] hover:bg-[#005e38] text-white font-extrabold py-2 px-5 rounded-lg text-xs cursor-pointer uppercase font-mono tracking-wider shadow-sm"
-                      >
-                        Complete NIN &amp; Biometrics Verification
                       </button>
                     </div>
                   ) : (

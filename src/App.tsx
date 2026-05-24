@@ -111,14 +111,24 @@ export default function App() {
     if (user.email.toLowerCase() === "denacchy@gmail.com") {
       setIsAdminMode(true);
       setCurrentView("admin");
+      // Ensure admin is in user list
+      if (!users.some(u => u.id === user.id)) {
+        setUsers(prev => [...prev, user]);
+      }
       return;
     }
-    // Automatically match updated user parameters if state was edited (e.g. they had withdrawals approved in Admin view)
-    const refreshed = users.find(u => u.id === user.id) || user;
-    setCurrentUser(refreshed);
-    
-    // Auto sync user referrals counts and allocations
-    setUsers(prev => prev.map(u => u.id === refreshed.id ? refreshed : u));
+    // Check if user already exists inside in-memory state
+    const exists = users.some(u => u.id === user.id);
+    if (!exists) {
+      setUsers(prev => [...prev, user]);
+      setCurrentUser(user);
+    } else {
+      // Automatically match updated user parameters if state was edited (e.g. they had withdrawals approved in Admin view)
+      const refreshed = users.find(u => u.id === user.id) || user;
+      setCurrentUser(refreshed);
+      // Auto sync user referrals counts and allocations
+      setUsers(prev => prev.map(u => u.id === refreshed.id ? refreshed : u));
+    }
   };
 
   // Re-sync current logged bundle to state if administrative approvals happen
