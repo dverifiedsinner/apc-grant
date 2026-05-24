@@ -121,6 +121,13 @@ export default function UserDashboard({
   const [latestPaymentRef, setLatestPaymentRef] = useState("");
   const [latestPaymentTime, setLatestPaymentTime] = useState("");
 
+  // Bank Transfer and Verification States
+  const [senderAccountName, setSenderAccountName] = useState(() => currentUser.transferAccountName || "");
+  const [receiptImage, setReceiptImage] = useState<string | null>(() => currentUser.transferReceiptImage || null);
+  const [receiptFileName, setReceiptFileName] = useState(() => currentUser.transferReceiptImage ? "APC_Grant_Transfer_Receipt.png" : "");
+  const [showValidationPopup, setShowValidationPopup] = useState(false);
+  const [validationLoading, setValidationLoading] = useState(false);
+
   // Paystack Integration States
   const [useRealPaystack, setUseRealPaystack] = useState(true);
   const [paystackCustomKey, setPaystackCustomKey] = useState("");
@@ -1322,6 +1329,34 @@ export default function UserDashboard({
       }, 5000); // 5 sec to let them audit the print receipt
 
     }, 2200);
+  };
+
+  // Process Direct Bank Transfer validation
+  const handleValidatePaymentTransfers = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!senderAccountName.trim()) {
+      alert("Please enter the sender's account name used for the transfer.");
+      return;
+    }
+    if (!receiptImage && !receiptFileName) {
+      alert("Please upload your payment transfer receipt.");
+      return;
+    }
+
+    setValidationLoading(true);
+    setTimeout(() => {
+      setValidationLoading(false);
+      
+      const updatedUser: UserType = {
+        ...currentUser,
+        membershipStatus: "pending",
+        transferAccountName: senderAccountName,
+        transferReceiptImage: receiptImage || undefined,
+      };
+      
+      onUpdateUser(updatedUser);
+      setShowValidationPopup(true);
+    }, 1500);
   };
 
   // Trigger real-time bank resolution hook

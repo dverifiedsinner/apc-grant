@@ -36,6 +36,8 @@ export interface User {
   passportPhoto?: string;
   ninDoc?: string;
   certDoc?: string;
+  transferAccountName?: string;
+  transferReceiptImage?: string;
   createdAt: string;
 }
 
