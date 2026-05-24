@@ -23,6 +23,19 @@ export interface User {
   faceVerified?: boolean;
   faceVerificationImage?: string;
   faceVerificationScore?: number;
+  lastName?: string;
+  otherNames?: string;
+  gender?: string;
+  lga?: string;
+  homeAddress?: string;
+  highestQualification?: string;
+  yearAcquired?: string;
+  schoolName?: string;
+  idType?: string;
+  idNumber?: string;
+  passportPhoto?: string;
+  ninDoc?: string;
+  certDoc?: string;
   createdAt: string;
 }
 
