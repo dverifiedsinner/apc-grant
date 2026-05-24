@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { 
   Sparkles, ShieldCheck, ShieldAlert, Award, Copy, CheckCircle2, User, Banknote, 
   CreditCard, RefreshCw, Send, ArrowUpRight, TrendingUp, Bell, Smartphone, Star, FileText, Download, QrCode,
-  Camera, Fingerprint, Check, Upload, Image, Eye
+  Camera, Fingerprint, Check, Upload, Image, Eye, BookOpen
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { NIGERIAN_BANKS, NIGERIAN_STATES, DEFAULT_GRANT_CONFIGS } from "../data";
@@ -22,6 +22,49 @@ interface UserDashboardProps {
   paystackPublicKey?: string;
 }
 
+const QUIZ_QUESTIONS = [
+  {
+    q: "What does the abbreviation APC mean in Nigerian politics?",
+    options: [
+      "All Progressives Congress",
+      "Alliance for Patriotic Citizens",
+      "African Peoples Congress",
+      "Action Progressive Coalition"
+    ],
+    correct: "All Progressives Congress"
+  },
+  {
+    q: "Which administrative central core holds the national social 'Renewed Hope' agenda?",
+    options: [
+      "Federal Government of Nigeria",
+      "Central Bank Administration",
+      "Collation of United Parties",
+      "Ministry of Youth Sports"
+    ],
+    correct: "Federal Government of Nigeria"
+  },
+  {
+    q: "What is the official currency of the Federal Republic of Nigeria?",
+    options: [
+      "Naira",
+      "Kwanza",
+      "Cedi",
+      "Pound Sterling"
+    ],
+    correct: "Naira"
+  },
+  {
+    q: "Which age cohort qualifies for the highest calibrated grant allocation of ₦750,000?",
+    options: [
+      "Elderly Bracket (46-65 Yrs)",
+      "Youth Bracket (17-25 Yrs)",
+      "Adult Bracket (26-35 Yrs)",
+      "Mid-Career Bracket (36-45 Yrs)"
+    ],
+    correct: "Elderly Bracket (46-65 Yrs)"
+  }
+];
+
 export default function UserDashboard({
   currentUser,
   onUpdateUser,
@@ -36,10 +79,30 @@ export default function UserDashboard({
 }: UserDashboardProps) {
   
   // Dashboard states
-  const [activeTab, setActiveTab] = useState<"overview" | "payment" | "withdrawal" | "referrals" | "history">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "payment" | "withdrawal" | "referrals" | "history" | "exam">(() => {
+    const justReg = localStorage.getItem("apc_just_registered") === "true";
+    if (justReg) {
+      localStorage.removeItem("apc_just_registered");
+      return "exam";
+    }
+    return "overview";
+  });
   const [copiedCode, setCopiedCode] = useState(false);
   const [cardDownloading, setCardDownloading] = useState(false);
   const [notifBellOpen, setNotifBellOpen] = useState(false);
+
+  // Examination interactive center states
+  const [examState, setExamState] = useState<"not_started" | "testing" | "grading" | "submitted">(() => {
+    return (localStorage.getItem(`apc_exam_state_${currentUser.id}`) as any) || "not_started";
+  });
+  const [quizQuestionIndex, setQuizQuestionIndex] = useState(0);
+  const [quizAnswers, setQuizAnswers] = useState<string[]>([]);
+  const [examTimeLeft, setExamTimeLeft] = useState(60);
+  const [examScoreValue, setExamScoreValue] = useState<number | null>(() => {
+    const cachedVal = localStorage.getItem(`apc_exam_score_${currentUser.id}`);
+    return cachedVal ? Number(cachedVal) : null;
+  });
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // Checkout gateway states
   const [paymentMethod, setPaymentMethod] = useState<"card" | "bank_transfer" | "ussd" | "wallet">("card");
@@ -188,6 +251,282 @@ export default function UserDashboard({
     navigator.clipboard.writeText(currentUser.referralCode);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const handleDownloadApplicationPDF = () => {
+    setDownloadingPdf(true);
+
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 800;
+      canvas.height = 1100;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Could not acquire canvas context");
+
+      // Set elegant layout base background
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // National dual green borders
+      ctx.fillStyle = "#008751";
+      ctx.fillRect(0, 0, 18, canvas.height);
+      ctx.fillRect(canvas.width - 18, 0, 18, canvas.height);
+
+      // Accent top columns
+      ctx.fillStyle = "#008751";
+      ctx.fillRect(18, 0, canvas.width - 36, 12);
+      ctx.fillStyle = "#F97316";
+      ctx.fillRect(18, 12, canvas.width - 36, 6);
+
+      // Official headers
+      ctx.fillStyle = "#008751";
+      ctx.font = "900 24px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("FEDERAL REPUBLIC OF NIGERIA", canvas.width / 2, 60);
+
+      ctx.fillStyle = "#1E293B";
+      ctx.font = "bold 13px system-ui, sans-serif";
+      ctx.fillText("FEDERAL MINISTRY OF HUMANITARIAN AFFAIRS & SOCIAL EMPOWERMENT", canvas.width / 2, 85);
+
+      ctx.fillStyle = "#F97316";
+      ctx.font = "bold 14px system-ui, sans-serif";
+      ctx.fillText("RENEWED HOPE NATIONAL SOCIAL GRANT PROGRAMME", canvas.width / 2, 110);
+
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "#E2E8F0";
+      ctx.beginPath();
+      ctx.moveTo(50, 130);
+      ctx.lineTo(canvas.width - 50, 130);
+      ctx.stroke();
+
+      // Form slip Header
+      ctx.fillStyle = "#0F172A";
+      ctx.font = "900 20px system-ui, sans-serif";
+      ctx.fillText("OFFICIAL EXAMINATIONS & APPLICATION SLIP", canvas.width / 2, 165);
+
+      const stCode = currentUser.state ? currentUser.state.substring(0, 2).toUpperCase() : "NG";
+      const cleanAppId = currentUser.id ? currentUser.id.replace("user-", "").substring(0, 6).toUpperCase() : "5391A";
+      const applicationNo = `APC/FGN/${stCode}/${cleanAppId}`;
+
+      ctx.fillStyle = "#008751";
+      ctx.font = "bold 15px system-ui, sans-serif";
+      ctx.fillText(`APPLICATION NUMBER: ${applicationNo}`, canvas.width / 2, 195);
+
+      // Circle crest frame background watermark
+      ctx.strokeStyle = "rgba(0, 135, 81, 0.05)";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, canvas.height / 2, 140, 0, 2 * Math.PI);
+      ctx.stroke();
+
+      // Passport Frame
+      const xp = 50;
+      const yp = 230;
+      const wp = 150;
+      const hp = 175;
+
+      ctx.fillStyle = "#F8FAFC";
+      ctx.fillRect(xp, yp, wp, hp);
+      ctx.strokeStyle = "#CBD5E1";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(xp, yp, wp, hp);
+
+      if (currentUser.passportPhoto) {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            ctx.drawImage(img, xp + 2, yp + 2, wp - 4, hp - 4);
+            continueDrawing();
+          } catch (e) {
+            drawFallbackAvatar();
+          }
+        };
+        img.onerror = () => {
+          drawFallbackAvatar();
+        };
+        img.src = currentUser.passportPhoto;
+      } else {
+        drawFallbackAvatar();
+      }
+
+      function drawFallbackAvatar() {
+        ctx.fillStyle = "#F1F5F9";
+        ctx.fillRect(xp + 2, yp + 2, wp - 4, hp - 4);
+        ctx.fillStyle = "#94A3B8";
+        ctx.beginPath();
+        ctx.arc(xp + wp/2, yp + hp/2 - 15, 30, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(xp + wp/2, yp + hp + 20, 55, Math.PI, 0);
+        ctx.fill();
+        ctx.fillStyle = "#475569";
+        ctx.font = "bold 12px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("PASSPORT PHOTO", xp + wp/2, yp + hp - 20);
+        continueDrawing();
+      }
+
+      function continueDrawing() {
+        ctx.textAlign = "left";
+        const tx = 230;
+        const ty = 250;
+        const lineSpacing = 28;
+
+        const details = [
+          { label: "FULL NAME:", value: currentUser.fullName.toUpperCase() },
+          { label: "STATE OF ORIGIN:", value: (currentUser.state || "Not Specified").toUpperCase() },
+          { label: "LOCAL GOVERNMENT:", value: (currentUser.lga || "Not Specified").toUpperCase() },
+          { label: "GENDER:", value: (currentUser.gender || "Not Specified").toUpperCase() },
+          { label: "AGE BRACKET:", value: `${currentUser.age} YEARS COHORT` },
+          { label: "EMAIL CARD FILE:", value: currentUser.email.toLowerCase() },
+          { label: "MOBILE PHONE:", value: currentUser.phone }
+        ];
+
+        details.forEach((det, idx) => {
+          ctx.fillStyle = "#475569";
+          ctx.font = "bold 11px system-ui, sans-serif";
+          ctx.fillText(det.label, tx, ty + (idx * lineSpacing));
+
+          ctx.fillStyle = "#0F172A";
+          ctx.font = "900 12px system-ui, sans-serif";
+          ctx.fillText(det.value, tx + 145, ty + (idx * lineSpacing));
+        });
+
+        // Grid Split Line
+        ctx.strokeStyle = "#E2E8F0";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(50, 460);
+        ctx.lineTo(canvas.width - 50, 460);
+        ctx.stroke();
+
+        ctx.fillStyle = "#008751";
+        ctx.font = "bold 13px system-ui, sans-serif";
+        ctx.fillText("SCHOLASTIC ELIGIBILITY & ALLOCATION SUMMARY", 50, 490);
+
+        // Box 1
+        ctx.fillStyle = "#F8FAFC";
+        ctx.fillRect(50, 510, 335, 95);
+        ctx.strokeStyle = "#E2E8F0";
+        ctx.strokeRect(50, 510, 335, 95);
+
+        ctx.fillStyle = "#64748B";
+        ctx.font = "bold 10px system-ui, sans-serif";
+        ctx.fillText("SUBMITTED HIGHEST QUALIFICATION", 65, 535);
+        ctx.fillStyle = "#0F172A";
+        ctx.font = "900 15px system-ui, sans-serif";
+        ctx.fillText(currentUser.highestQualification || "S.S.C.E", 65, 560);
+        ctx.fillStyle = "#475569";
+        ctx.font = "bold 10px system-ui, sans-serif";
+        ctx.fillText(`Year Acquired: ${currentUser.yearAcquired || "2022"} / School: ${currentUser.schoolName || "National Academy"}`, 65, 580);
+
+        // Box 2
+        ctx.fillStyle = "#F0FDF4";
+        ctx.fillRect(405, 510, 345, 95);
+        ctx.strokeStyle = "#DCFCE7";
+        ctx.strokeRect(405, 510, 345, 95);
+
+        ctx.fillStyle = "#15803D";
+        ctx.font = "bold 10px system-ui, sans-serif";
+        ctx.fillText("APPROVED CASH DISBURSEMENT SUM", 420, 535);
+        ctx.fillStyle = "#166534";
+        ctx.font = "900 20px system-ui, sans-serif";
+        ctx.fillText(`₦${(currentUser.grantAmount || 180000).toLocaleString()}`, 420, 565);
+        ctx.fillStyle = "#15803D";
+        ctx.font = "bold 9px system-ui, sans-serif";
+        ctx.fillText("RENEWED HOPE FGN SOCIAL OUTREACH DISBURSEMENT FUND", 420, 585);
+
+        ctx.fillStyle = "#008751";
+        ctx.font = "bold 13px system-ui, sans-serif";
+        ctx.fillText("EXAMINATION ASSESSMENT REPORT", 50, 640);
+
+        // Assessment Box
+        ctx.fillStyle = "#FFFBEB";
+        ctx.fillRect(50, 660, 700, 100);
+        ctx.strokeStyle = "#FEF3C7";
+        ctx.strokeRect(50, 660, 700, 100);
+
+        ctx.fillStyle = "#B45309";
+        ctx.font = "bold 11px system-ui, sans-serif";
+        ctx.fillText("OFFICIAL EXAM SCORE", 70, 690);
+        
+        ctx.fillStyle = "#78350F";
+        ctx.font = "900 20px system-ui, sans-serif";
+        const examText = examScoreValue !== null ? `${examScoreValue}% MARKS / COMPLETED` : "COMPLETED / AWAITING GRADING";
+        ctx.fillText(examText, 70, 720);
+
+        ctx.fillStyle = "#B45309";
+        ctx.font = "bold 12px system-ui, sans-serif";
+        ctx.fillText("AWAITING RESULT", 530, 715);
+
+        // Barcode
+        ctx.strokeStyle = "#000000";
+        ctx.fillStyle = "#000000";
+        ctx.lineWidth = 2;
+        let bx = 80;
+        const by = 800;
+        const bh = 50;
+
+        ctx.font = "bold 10px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(`*${cleanAppId}-${stCode}*`, 200, by + bh + 15);
+
+        ctx.textAlign = "left";
+        for (let i = 0; i < 40; i++) {
+          const w = (i % 3 === 0) ? 3 : (i % 2 === 0) ? 1.5 : 1;
+          const space = (i % 4 === 0) ? 4 : (i % 3 === 0) ? 2 : 1;
+          ctx.fillRect(bx, by, w, bh);
+          bx += w + space;
+        }
+
+        // Draw Simulated QR Block
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "#475569";
+        ctx.strokeRect(canvas.width - 150, by - 10, 100, 100);
+
+        ctx.fillStyle = "#0F172A";
+        ctx.font = "bold 8px system-ui, sans-serif";
+        ctx.fillText("SECURITY AUTH", canvas.width - 142, by + 12);
+
+        ctx.fillStyle = "#000000";
+        for (let gx = 0; gx < 8; gx++) {
+          for (let gy = 0; gy < 8; gy++) {
+            if ((gx + gy) % 2 === 0 || (gx * gy) % 3 === 0) {
+              ctx.fillRect(canvas.width - 145 + gx*11, by + 25 + gy*8, 7, 5);
+            }
+          }
+        }
+
+        // Footer lines information
+        ctx.fillStyle = "#F1F5F9";
+        ctx.fillRect(18, canvas.height - 110, canvas.width - 36, 92);
+        
+        ctx.fillStyle = "#475569";
+        ctx.font = "italic 10px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("This slip serves as proof of examination credentials registration. Grants disbursements map directly to biometrics.", canvas.width / 2, canvas.height - 80);
+        ctx.fillText("All approvals undergo physical verification. Biometric spoofing triggers instant central blacklisting.", canvas.width / 2, canvas.height - 65);
+
+        ctx.fillStyle = "#94A3B8";
+        ctx.font = "bold 9px monospace";
+        ctx.fillText(`GENERATED ARCHIVE: ${new Date().toISOString()} / APC CENTRAL NODE LIAISON`, canvas.width / 2, canvas.height - 40);
+
+        ctx.fillStyle = "#008751";
+        ctx.fillRect(18, canvas.height - 12, canvas.width - 36, 12);
+
+        // link export trigger download
+        const link = document.createElement("a");
+        link.download = `APC_Grant_Application_${currentUser.fullName.replace(/\s+/g, "_")}.png`;
+        link.href = canvas.toDataURL("image/png");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setDownloadingPdf(false);
+      }
+    } catch (err) {
+      console.error(err);
+      setDownloadingPdf(false);
+    }
   };
 
   // CARD PASSPORT PHOTO STATES & HANDLERS
@@ -1211,6 +1550,7 @@ export default function UserDashboard({
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-1.5">
               {[
                 { tab: "overview", label: "Citizen Hub", icon: User },
+                { tab: "exam", label: "Examination Center", icon: Award },
                 { tab: "payment", label: "APC ID Card", icon: CreditCard },
                 { tab: "withdrawal", label: "Withdrawal Desk", icon: Banknote },
                 { tab: "referrals", label: "Referral Center", icon: TrendingUp },
@@ -2149,6 +2489,285 @@ export default function UserDashboard({
                     </ul>
                   </div>
 
+                </motion.div>
+              )}
+
+              {/* TAB: EXAMINATION CENTER & SLIP DESK */}
+              {activeTab === "exam" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  className="space-y-6 text-left"
+                >
+                  <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+                    {/* TOP TEXT */}
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex items-start space-x-3">
+                      <div className="w-8 h-8 rounded-lg bg-[#008751] flex items-center justify-center text-white shrink-0">
+                        <Award className="w-4.5 h-4.5" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-xs text-slate-800 uppercase tracking-tight leading-normal mb-1">
+                          take your examinaation so your application can proceed
+                        </h3>
+                        <p className="text-[11px] text-slate-500 leading-normal">
+                          All registered citizens must take this screening test. Once completed, your application score will show, and your official grant clearing slip will be updated.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* QUIZ ENGINE AND STATUS */}
+                    {examState === "not_started" && (
+                      <div className="border border-dashed border-slate-300 rounded-xl p-6 text-center bg-slate-50 space-y-4">
+                        <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto text-emerald-600">
+                          <BookOpen className="w-6 h-6" />
+                        </div>
+                        <h4 className="font-bold text-slate-900 text-xs uppercase font-mono tracking-wider">Citizenship Eligibility Test (4 Questions)</h4>
+                        <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                          This test validates your basic comprehension of Nigerian civic parameters. It takes less than 2 minutes. Click below to initialize.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExamState("testing");
+                            setQuizQuestionIndex(0);
+                            setQuizAnswers([]);
+                            localStorage.setItem(`apc_exam_state_${currentUser.id}`, "testing");
+                          }}
+                          className="px-6 py-2.5 bg-[#008751] hover:bg-[#007345] text-white font-extrabold rounded-lg text-xs shadow-md cursor-pointer transition-all"
+                        >
+                          Take Exam
+                        </button>
+                      </div>
+                    )}
+
+                    {examState === "testing" && (
+                      <div className="border border-slate-200 rounded-xl p-5 bg-slate-50 relative space-y-4">
+                        <div className="flex justify-between items-center bg-white px-3 py-1.5 rounded border border-slate-100">
+                          <span className="text-[9.5px] font-mono text-slate-500 font-bold uppercase">
+                            Question {quizQuestionIndex + 1} of {QUIZ_QUESTIONS.length}
+                          </span>
+                          <span className="text-[10px] font-mono font-black text-emerald-600 flex items-center space-x-1 animate-pulse">
+                            <span>⏱ Smart Proctor Active</span>
+                          </span>
+                        </div>
+
+                        <div className="space-y-4">
+                          <p className="font-bold text-slate-800 text-xs">
+                            {QUIZ_QUESTIONS[quizQuestionIndex].q}
+                          </p>
+
+                          <div className="grid grid-cols-1 gap-2.5">
+                            {QUIZ_QUESTIONS[quizQuestionIndex].options.map((opt) => {
+                              const isSelected = quizAnswers[quizQuestionIndex] === opt;
+                              return (
+                                <button
+                                  type="button"
+                                  key={opt}
+                                  onClick={() => {
+                                    const updated = [...quizAnswers];
+                                    updated[quizQuestionIndex] = opt;
+                                    setQuizAnswers(updated);
+                                  }}
+                                  className={`w-full text-left p-3 rounded-lg border text-xs font-medium cursor-pointer transition-all ${
+                                    isSelected
+                                      ? "bg-[#008751] text-white border-[#008751] font-extrabold"
+                                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
+                                  }`}
+                                >
+                                  {opt}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between items-center border-t border-slate-200 pt-3">
+                          {quizQuestionIndex > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setQuizQuestionIndex(prev => prev - 1)}
+                              className="px-3 py-1.5 bg-white border border-slate-300 rounded text-[11px] font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                            >
+                              Prev
+                            </button>
+                          )}
+                          
+                          {quizQuestionIndex < QUIZ_QUESTIONS.length - 1 ? (
+                            <button
+                              type="button"
+                              disabled={!quizAnswers[quizQuestionIndex]}
+                              onClick={() => setQuizQuestionIndex(prev => prev + 1)}
+                              className="ml-auto px-4 py-1.5 bg-[#008751] hover:bg-[#007345] text-white rounded text-[11px] font-black cursor-pointer disabled:opacity-40"
+                            >
+                              Next Question
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={!quizAnswers[quizQuestionIndex]}
+                              onClick={() => {
+                                setExamState("grading");
+                                localStorage.setItem(`apc_exam_state_${currentUser.id}`, "grading");
+                                setTimeout(() => {
+                                  let correctCount = 0;
+                                  QUIZ_QUESTIONS.forEach((q, idx) => {
+                                    if (quizAnswers[idx] === q.correct) {
+                                      correctCount++;
+                                    }
+                                  });
+                                  const finalScore = Math.round((correctCount / QUIZ_QUESTIONS.length) * 100);
+                                  setExamScoreValue(finalScore);
+                                  setExamState("submitted");
+                                  localStorage.setItem(`apc_exam_state_${currentUser.id}`, "submitted");
+                                  localStorage.setItem(`apc_exam_score_${currentUser.id}`, finalScore.toString());
+                                }, 1500);
+                              }}
+                              className="ml-auto px-5 py-2 bg-[#008751] hover:bg-[#007345] text-white rounded text-[11px] font-black tracking-wide uppercase shadow cursor-pointer disabled:opacity-40"
+                            >
+                              Submit Exam Answers
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {examState === "grading" && (
+                      <div className="border border-slate-200 rounded-xl p-8 bg-slate-50 text-center space-y-4 animate-pulse">
+                        <div className="w-8 h-8 border-3 border-[#008751]/20 border-t-[#008751] rounded-full animate-spin mx-auto" />
+                        <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-widest font-mono">Grading Examination Script...</h4>
+                        <p className="text-[10px] text-slate-500">Connecting social liaison server nodes to register biometrics scores.</p>
+                      </div>
+                    )}
+
+                    {examState === "submitted" && (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center space-y-3">
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mx-auto text-[#008751] text-sm font-black">
+                          ✓
+                        </div>
+                        <h4 className="font-extrabold text-slate-900 text-xs uppercase tracking-wide">Screening Assessment Submitted!</h4>
+                        <p className="text-[11px] text-slate-600 leading-relaxed max-w-sm mx-auto">
+                          Eligibility screening validated successfully. Your scores have been assigned. See credentials below.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* OFFICIAL APPLICATION SLIP DISPLAY CARD (With Passport details) */}
+                    <div id="applicant-examination-slip" className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm text-xs font-sans">
+                      <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <APCLogo className="w-8 h-8" />
+                          <div className="text-left">
+                            <h4 className="font-black text-[11px] uppercase tracking-wide leading-none">FEDERAL REPUBLIC OF NIGERIA</h4>
+                            <span className="text-[8.5px] text-emerald-400 font-mono font-bold uppercase tracking-widest block mt-1">National Social Grant File Slip</span>
+                          </div>
+                        </div>
+                        
+                        <div className="text-right">
+                          <span className="bg-[#008751]/20 text-[#008751] border border-[#008751]/35 px-1.5 py-0.5 rounded text-[9px] font-mono uppercase font-black">
+                            STATUS: REGISTERED
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-5 bg-white grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+                        {/* LEFT: Passport Section */}
+                        <div className="md:col-span-3 flex flex-col items-center space-y-2 shrink-0">
+                          <div className="w-32 h-36 bg-slate-50 border border-slate-300 rounded-xl p-1 shrink-0 overflow-hidden shadow-sm">
+                            {currentUser.passportPhoto ? (
+                              <img
+                                src={currentUser.passportPhoto}
+                                alt="Applicant Passport"
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-slate-100 flex flex-col items-center justify-center text-slate-400">
+                                <User className="w-8 h-8" />
+                                <span className="text-[8px] font-bold font-mono uppercase mt-1">NO PHOTO</span>
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-[8.5px] text-slate-400 font-mono uppercase font-black">Official Passport</span>
+                        </div>
+
+                        {/* RIGHT: Citizen bio details */}
+                        <div className="md:col-span-9 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 font-medium text-slate-700 text-left">
+                          <div>
+                            <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider block font-mono">APPLICATION NUMBER:</span>
+                            <span className="font-black text-slate-900 font-mono text-xs">
+                              APC/FGN/{(currentUser.state || "LA").substring(0, 2).toUpperCase()}/{(currentUser.id || "APP-401").split("-")[1]?.substring(0, 6).toUpperCase() || "94810"}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider block font-mono">STATE OF ORIGIN:</span>
+                            <span className="font-extrabold text-slate-900 text-xs">{currentUser.state}</span>
+                          </div>
+
+                          <div>
+                            <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider block font-mono">LOCAL GOVERNMENT AREA:</span>
+                            <span className="font-extrabold text-slate-900 text-xs">{currentUser.lga || "Secretariat South"}</span>
+                          </div>
+
+                          <div>
+                            <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider block font-mono">GENDER SPECIFICATION:</span>
+                            <span className="font-extrabold text-slate-900 text-xs">{currentUser.gender || "Not Indicated"}</span>
+                          </div>
+
+                          <div>
+                            <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider block font-mono">CALCULATED AGE STATUS:</span>
+                            <span className="font-extrabold text-slate-900 text-xs">{currentUser.age} YEARS OLD</span>
+                          </div>
+
+                          <div>
+                            <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider block font-mono">COHORT BRACKET:</span>
+                            <span className="text-[#008751] font-black text-xs font-mono">₦{(currentUser.grantAmount || 180000).toLocaleString()} OUTREACH ALLOC</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ASSESSMENT STATS DIVIDER */}
+                      <div className="border-t border-slate-150 p-4 bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4 text-left">
+                        {/* SCORE AND STATUS LABELS */}
+                        <div>
+                          <p className="text-[9px] text-slate-400 uppercase font-mono tracking-wide font-black">examination score</p>
+                          <p className="text-sm font-extrabold text-slate-900 mt-0.5 font-mono">
+                            {examScoreValue !== null ? `${examScoreValue}% Marks` : "Awaiting Result"}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[9px] text-slate-400 uppercase font-mono tracking-wide font-black">Clearing Status</p>
+                          <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 text-[10px] font-black font-mono mt-0.5 uppercase tracking-wide">
+                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping shrink-0" />
+                            <span>awaiting result</span>
+                          </span>
+                        </div>
+
+                        {/* PDF DOWNLOAD BUTTON */}
+                        <button
+                          type="button"
+                          id="pdf-download-btn"
+                          disabled={downloadingPdf}
+                          onClick={handleDownloadApplicationPDF}
+                          className="w-full sm:w-auto px-4.5 py-2.5 bg-[#008751] hover:bg-[#007345] text-white font-black text-xs rounded-xl flex items-center justify-center space-x-1.5 shadow-sm hover:shadow active:scale-97 cursor-pointer transition-all disabled:opacity-50"
+                        >
+                          {downloadingPdf ? (
+                            <>
+                              <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin shrink-0" />
+                              <span>Generating PDF Document Slip...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Download className="w-3.5 h-3.5 text-emerald-100" />
+                              <span>Download Application PDF</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                  </div>
                 </motion.div>
               )}
 

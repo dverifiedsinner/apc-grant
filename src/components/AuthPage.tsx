@@ -23,6 +23,7 @@ export default function AuthPage({
   const [formType, setFormType] = useState<"login" | "register">(initialForm);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Registration step tracker
   const [regStep, setRegStep] = useState(1);
@@ -321,62 +322,79 @@ export default function AuthPage({
         return;
       }
 
-      const compositeFullName = `${lastName.trim()} ${otherNames.trim()}`;
-      const finalAge = calculatedAge !== null ? calculatedAge : 25;
-
-      const newUser: User = {
-        id: `user-${Date.now()}`,
-        fullName: compositeFullName,
-        dob,
-        age: finalAge,
-        phone,
-        email,
-        state,
-        password,
-        grantAmount: matchedConfig ? matchedConfig.grantAmount : 0,
-        membershipFee: matchedConfig ? matchedConfig.membershipFee : 0,
-        membershipStatus: "unpaid",
-        withdrawalStatus: "not_requested",
-        referralCode: lastName.substring(0, 4).toUpperCase() + Math.floor(10 + Math.random() * 90),
-        referredBy: referralCode.trim() || undefined,
-        referralsCount: 0,
-        
-        // Custom multi-step outputs
-        lastName,
-        otherNames,
-        gender,
-        lga,
-        homeAddress,
-        highestQualification,
-        yearAcquired,
-        schoolName,
-        idType,
-        idNumber,
-        passportPhoto,
-        ninDoc,
-        certDoc,
-
-        createdAt: new Date().toISOString()
-      };
-
-      usersList.push(newUser);
-      localStorage.setItem("apc_grants_users", JSON.stringify(usersList));
-
-      // Handle referrals tracking code
-      if (newUser.referredBy) {
-        const referralCodeUpper = newUser.referredBy.toUpperCase();
-        const updatedUsersList = usersList.map(u => {
-          if (u.referralCode.toUpperCase() === referralCodeUpper) {
-            return { ...u, referralsCount: u.referralsCount + 1 };
-          }
-          return u;
-        });
-        localStorage.setItem("apc_grants_users", JSON.stringify(updatedUsersList));
-      }
-
-      onAuthSuccess(newUser);
-      onNavigate("dashboard");
+      setShowConfirmModal(true);
     }
+  };
+
+  const handleFinalRegisterSubmit = () => {
+    setShowConfirmModal(false);
+    const storedUsersRaw = localStorage.getItem("apc_grants_users");
+    const usersList: User[] = storedUsersRaw ? JSON.parse(storedUsersRaw) : SEED_USERS;
+
+    // Double check email duplicate
+    if (usersList.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
+      setErrorMsg("An active grant file with this email already exists inside our archives.");
+      return;
+    }
+
+    const compositeFullName = `${lastName.trim()} ${otherNames.trim()}`;
+    const finalAge = calculatedAge !== null ? calculatedAge : 25;
+
+    const newUser: User = {
+      id: `user-${Date.now()}`,
+      fullName: compositeFullName,
+      dob,
+      age: finalAge,
+      phone,
+      email,
+      state,
+      password,
+      grantAmount: matchedConfig ? matchedConfig.grantAmount : 0,
+      membershipFee: matchedConfig ? matchedConfig.membershipFee : 0,
+      membershipStatus: "unpaid",
+      withdrawalStatus: "not_requested",
+      referralCode: lastName.substring(0, 4).toUpperCase() + Math.floor(10 + Math.random() * 90),
+      referredBy: referralCode.trim() || undefined,
+      referralsCount: 0,
+      
+      // Custom multi-step outputs
+      lastName,
+      otherNames,
+      gender,
+      lga,
+      homeAddress,
+      highestQualification,
+      yearAcquired,
+      schoolName,
+      idType,
+      idNumber,
+      passportPhoto,
+      ninDoc,
+      certDoc,
+
+      createdAt: new Date().toISOString()
+    };
+
+    usersList.push(newUser);
+    localStorage.setItem("apc_grants_users", JSON.stringify(usersList));
+
+    // Handle referrals tracking code
+    if (newUser.referredBy) {
+      const referralCodeUpper = newUser.referredBy.toUpperCase();
+      const updatedUsersList = usersList.map(u => {
+        if (u.referralCode.toUpperCase() === referralCodeUpper) {
+          return { ...u, referralsCount: u.referralsCount + 1 };
+        }
+        return u;
+      });
+      localStorage.setItem("apc_grants_users", JSON.stringify(updatedUsersList));
+    }
+
+    // Direct dashboard to register an immediate active focus tab on the examination center
+    localStorage.setItem("apc_just_registered", "true");
+
+    onAuthSuccess(newUser);
+    onNavigate("dashboard");
   };
 
   const isStep5 = formType === "register" && regStep === 5;
@@ -1141,6 +1159,53 @@ export default function AuthPage({
 
         </div>
       </div>
+
+      <AnimatePresence>
+        {showConfirmModal && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl border border-slate-200 relative overflow-hidden text-slate-900"
+            >
+              {/* Top alert line */}
+              <div className="absolute top-0 inset-x-0 h-1 bg-red-500" />
+              
+              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3 text-red-500">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              
+              <h3 className="text-lg font-black text-slate-900 mb-1 tracking-tight">
+                ARE YOU SURE?
+              </h3>
+              
+              <p className="text-slate-500 text-xs mb-6 px-1 italic">
+                you will not be able to make any correction once its submitted
+              </p>
+              
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  id="btn-confirm-submit"
+                  onClick={handleFinalRegisterSubmit}
+                  className="w-full py-2.5 bg-[#008751] hover:bg-[#007345] text-white font-black rounded-lg text-xs uppercase tracking-wide shadow cursor-pointer transition-all"
+                >
+                  yes, submit application
+                </button>
+                <button
+                  type="button"
+                  id="btn-confirm-cancel"
+                  onClick={() => setShowConfirmModal(false)}
+                  className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs cursor-pointer transition-all"
+                >
+                  back
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
