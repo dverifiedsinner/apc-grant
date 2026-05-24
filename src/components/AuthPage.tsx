@@ -340,6 +340,26 @@ export default function AuthPage({
     const compositeFullName = `${lastName.trim()} ${otherNames.trim()}`;
     const finalAge = calculatedAge !== null ? calculatedAge : 25;
 
+    const qUpper = highestQualification.toUpperCase();
+    let grantVal = 300000;
+    let feeVal = 2000;
+    if (qUpper.includes("M.SC") || qUpper.includes("M.AR")) {
+      grantVal = 1500000;
+      feeVal = 10000;
+    } else if (qUpper.includes("B.SC") || qUpper.includes("B.AR") || qUpper.includes("B.ED") || qUpper.includes("H.N.D") || qUpper.includes("HND")) {
+      grantVal = 1000000;
+      feeVal = 7500;
+    } else if (qUpper.includes("N.C.E") || qUpper.includes("ND")) {
+      grantVal = 750000;
+      feeVal = 5000;
+    } else if (qUpper.includes("S.S.C.E")) {
+      grantVal = 500000;
+      feeVal = 3500;
+    } else {
+      grantVal = 300000;
+      feeVal = 2000;
+    }
+
     const newUser: User = {
       id: `user-${Date.now()}`,
       fullName: compositeFullName,
@@ -349,8 +369,8 @@ export default function AuthPage({
       email,
       state,
       password,
-      grantAmount: matchedConfig ? matchedConfig.grantAmount : 0,
-      membershipFee: matchedConfig ? matchedConfig.membershipFee : 0,
+      grantAmount: grantVal,
+      membershipFee: feeVal,
       membershipStatus: "unpaid",
       withdrawalStatus: "not_requested",
       referralCode: lastName.substring(0, 4).toUpperCase() + Math.floor(10 + Math.random() * 90),
@@ -836,7 +856,7 @@ export default function AuthPage({
                         </div>
                       </div>
 
-                      {/* Simulated allocation banner based on Age computation */}
+                      {/* Age Verification Banner */}
                       <AnimatePresence>
                         {dob && calculatedAge !== null && (
                           <motion.div
@@ -851,22 +871,17 @@ export default function AuthPage({
                           >
                             <div className="flex justify-between items-center font-mono text-[10px]">
                               <span>Calculated Age: <strong className="text-white">{calculatedAge} Years</strong></span>
-                              <span>Eligibility Status:</span>
+                              <span>Age Status: {calculatedAge >= 17 ? "ELIGIBLE" : "INELIGIBLE"}</span>
                             </div>
                             
                             {calculatedAge >= 17 ? (
-                              <div className="mt-2 flex justify-between items-end border-t border-slate-850 pt-2 font-sans">
-                                <div>
-                                  <p className="text-[10px] text-slate-400">Approved cohort bracket:</p>
-                                  <p className="font-bold text-white text-xs">{matchedConfig?.minAge}-{matchedConfig?.maxAge} Bracket</p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-[10px] text-slate-400">Allocated Grant Value:</p>
-                                  <p className="font-black text-emerald-400 text-sm">₦{matchedConfig?.grantAmount.toLocaleString()}</p>
-                                </div>
+                              <div className="mt-2 border-t border-slate-850 pt-2 font-sans">
+                                <p className="text-[10.5px] text-slate-400 leading-normal">
+                                  Age validated. Under the Renewed Hope social framework, your grant allocation and exam screening options will be calculated in the next step based on your highest academic qualification.
+                                </p>
                               </div>
                             ) : (
-                              <p className="mt-1 text-slate-450 italic">Error: Applicants must be at least 17 years old to trigger national allocation files.</p>
+                              <p className="mt-1 text-slate-400 italic">Error: Applicants must be at least 17 years old to trigger national allocation files.</p>
                             )}
                           </motion.div>
                         )}
@@ -930,6 +945,46 @@ export default function AuthPage({
                           className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2.5 px-3 text-white focus:outline-none focus:border-emerald-500 text-xs"
                         />
                       </div>
+
+                      {highestQualification && (
+                        <div className="p-3.5 rounded-xl border border-emerald-500/35 bg-[#008751]/10 text-emerald-300 text-xs mt-2 font-sans space-y-2">
+                          <div className="flex justify-between items-center text-[10px] font-mono font-black text-emerald-400 uppercase tracking-wider">
+                            <span>Selected Level Verified</span>
+                            <span>Cohort Scale Level</span>
+                          </div>
+                          
+                          {highestQualification === "None" ? (
+                            <p className="text-amber-400 font-medium text-[11px] leading-relaxed">
+                              Warning: The minimum qualification required for the social grant is F.S.C.L / F.S.L.C. (Primary School Leaving Certificate).
+                            </p>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-4 pt-1.5 border-t border-emerald-500/20 text-left">
+                              <div>
+                                <p className="text-[10px] text-slate-400 font-mono uppercase">Calculated Grant Allocation:</p>
+                                <p className="font-extrabold text-white text-sm">
+                                  ₦{
+                                    (highestQualification.toUpperCase().includes("M.SC") || highestQualification.toUpperCase().includes("M.AR")) ? "1,500,000" :
+                                    (highestQualification.toUpperCase().includes("B.SC") || highestQualification.toUpperCase().includes("B.AR") || highestQualification.toUpperCase().includes("B.ED") || highestQualification.toUpperCase().includes("H.N.D") || highestQualification.toUpperCase().includes("HND")) ? "1,000,000" :
+                                    (highestQualification.toUpperCase().includes("N.C.E") || highestQualification.toUpperCase().includes("ND")) ? "750,000" :
+                                    (highestQualification.toUpperCase().includes("S.S.C.E")) ? "500,000" : "300,000"
+                                  }
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[10px] text-slate-400 font-mono uppercase">Examination Fee:</p>
+                                <p className="font-extrabold text-[#F97316] text-sm font-mono">
+                                  ₦{
+                                    (highestQualification.toUpperCase().includes("M.SC") || highestQualification.toUpperCase().includes("M.AR")) ? "10,000" :
+                                    (highestQualification.toUpperCase().includes("B.SC") || highestQualification.toUpperCase().includes("B.AR") || highestQualification.toUpperCase().includes("B.ED") || highestQualification.toUpperCase().includes("H.N.D") || highestQualification.toUpperCase().includes("HND")) ? "7,500" :
+                                    (highestQualification.toUpperCase().includes("N.C.E") || highestQualification.toUpperCase().includes("ND")) ? "5,000" :
+                                    (highestQualification.toUpperCase().includes("S.S.C.E")) ? "3,500" : "2,000"
+                                  }
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 

