@@ -38,6 +38,7 @@ export interface User {
   certDoc?: string;
   transferAccountName?: string;
   transferReceiptImage?: string;
+  examScore?: number | null;
   createdAt: string;
 }
 

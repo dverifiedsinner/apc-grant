@@ -79,7 +79,7 @@ export default function UserDashboard({
 }: UserDashboardProps) {
   
   // Dashboard states
-  const [activeTab, setActiveTab] = useState<"overview" | "payment" | "withdrawal" | "referrals" | "history" | "exam">(() => {
+  const [activeTab, setActiveTab] = useState<"overview" | "payment" | "exam" | "download_application" | "download_result" | "withdrawal" | "grant_id" | "referrals" | "history">(() => {
     const justReg = localStorage.getItem("apc_just_registered") === "true";
     if (justReg) {
       localStorage.removeItem("apc_just_registered");
@@ -89,6 +89,7 @@ export default function UserDashboard({
   });
   const [copiedCode, setCopiedCode] = useState(false);
   const [cardDownloading, setCardDownloading] = useState(false);
+  const [downloadingCertificate, setDownloadingCertificate] = useState(false);
   const [notifBellOpen, setNotifBellOpen] = useState(false);
 
   // Examination interactive center states
@@ -127,6 +128,32 @@ export default function UserDashboard({
   const [receiptFileName, setReceiptFileName] = useState(() => currentUser.transferReceiptImage ? "APC_Grant_Transfer_Receipt.png" : "");
   const [showValidationPopup, setShowValidationPopup] = useState(false);
   const [validationLoading, setValidationLoading] = useState(false);
+
+  // Drag and drop handlers for bank transfer receipt uploads
+  const [dragActive, setDragActive] = useState(false);
+  const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReceiptImage(reader.result as string);
+        setReceiptFileName(file.name);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Paystack Integration States
   const [useRealPaystack, setUseRealPaystack] = useState(true);
@@ -1132,6 +1159,154 @@ export default function UserDashboard({
     }
   };
 
+  const downloadExamCertificatePNG = () => {
+    if (currentUser.examScore === null) return;
+    setDownloadingCertificate(true);
+    setTimeout(() => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 800;
+        canvas.height = 560;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        // Draw elegant Certificate background (Cream Slate border)
+        ctx.fillStyle = "#FCFDFE";
+        ctx.fillRect(0, 0, 800, 560);
+
+        // Dark Emerald border frame 
+        ctx.strokeStyle = "#008751";
+        ctx.lineWidth = 15;
+        ctx.strokeRect(7.5, 7.5, 785, 545);
+
+        // Thin inner gold accent border lines
+        ctx.strokeStyle = "#EAB308";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(22, 22, 756, 516);
+
+        // Draw corner decals
+        ctx.fillStyle = "#EAB308";
+        ctx.fillRect(22, 22, 30, 30);
+        ctx.fillRect(748, 22, 30, 30);
+        ctx.fillRect(22, 508, 30, 30);
+        ctx.fillRect(748, 508, 30, 30);
+
+        // APC Crest Watermark
+        ctx.fillStyle = "#008751";
+        ctx.globalAlpha = 0.03;
+        ctx.font = "bold 160px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("APC", 400, 280);
+        ctx.globalAlpha = 1.0;
+
+        // Title & Header
+        ctx.textAlign = "center";
+        ctx.font = "bold 20px Georgia, serif";
+        ctx.fillStyle = "#008751";
+        ctx.fillText("ALL PROGRESSIVES CONGRESS (APC)", 400, 75);
+
+        ctx.font = "bold 11px system-ui, sans-serif";
+        ctx.fillStyle = "#1E293B";
+        ctx.fillText("RENEWED HOPE NATIONAL SOCIAL GRANT SCHEME", 400, 105);
+
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.3)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(150, 125);
+        ctx.lineTo(650, 125);
+        ctx.stroke();
+
+        // Certificate Name
+        ctx.font = "italic 16px Georgia, serif";
+        ctx.fillStyle = "#475569";
+        ctx.fillText("This official clearing certificate is proudfully awarded to:", 400, 165);
+
+        ctx.font = "bold 28px Georgia, serif";
+        ctx.fillStyle = "#0F172A";
+        ctx.fillText(currentUser.fullName.toUpperCase(), 400, 215);
+
+        // Achievement Text
+        ctx.font = "14px system-ui, sans-serif";
+        ctx.fillStyle = "#334155";
+        ctx.fillText("In recognition of successful verification and high competency rating in the", 400, 260);
+        ctx.font = "bold 14px system-ui, sans-serif";
+        ctx.fillStyle = "#008751";
+        ctx.fillText("APC National Grant Proctor Examination Center", 400, 285);
+
+        // Score Badge
+        ctx.fillStyle = "#F0FDF4";
+        ctx.fillRect(250, 315, 300, 75);
+        ctx.strokeStyle = "#86EFAC";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(250, 315, 300, 75);
+
+        ctx.font = "bold 11px system-ui, sans-serif";
+        ctx.fillStyle = "#166534";
+        ctx.fillText("EXAMINATION SCORE RATE", 400, 335);
+
+        ctx.font = "bold 24px monospace";
+        ctx.fillStyle = "#008751";
+        ctx.fillText(`${currentUser.examScore}% MARKS`, 400, 370);
+
+        // Footnotes / Verification details
+        ctx.font = "bold 9px monospace";
+        ctx.fillStyle = "#64748B";
+        ctx.textAlign = "left";
+        ctx.fillText(`CANDIDATE ID: ${currentUser.membershipId || "APC-NG-PENDING"}`, 60, 445);
+        ctx.fillText(`SECTOR BATCH: APC-OCT-COHORT`, 60, 465);
+        ctx.fillText(`SECURITY REF: SEC-${currentUser.id.substring(0,8).toUpperCase()}`, 60, 485);
+
+        // Verification stamps & signs
+        ctx.textAlign = "right";
+        ctx.font = "italic 11px Georgia, serif";
+        ctx.fillStyle = "#1E293B";
+        ctx.fillText("Sen. George Akume", 740, 445);
+        ctx.font = "8px system-ui, sans-serif";
+        ctx.fillStyle = "#64748B";
+        ctx.fillText("National Director of Social Intervention Funds", 740, 460);
+        ctx.fillText("Federal Ministry of Humanitarian & Empowerment", 740, 475);
+
+        // Draw Sign stroke line
+        ctx.strokeStyle = "rgba(0, 135, 81, 0.5)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(560, 430);
+        ctx.lineTo(740, 428);
+        ctx.stroke();
+
+        // Round official gold validation stamp
+        ctx.beginPath();
+        ctx.arc(400, 465, 30, 0, 2 * Math.PI);
+        ctx.fillStyle = "#FEF08A";
+        ctx.fill();
+        ctx.strokeStyle = "#9A3412";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.font = "9px system-ui, sans-serif";
+        ctx.fillStyle = "#9A3412";
+        ctx.textAlign = "center";
+        ctx.fillText("APPROVED", 400, 462);
+        ctx.font = "bold 7px monospace";
+        ctx.fillText("APC STAMP", 400, 471);
+
+        // Download trigger
+        const dataUrl = canvas.toDataURL("image/png");
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = `APC_Exam_Result_Certificate_${currentUser.fullName.replace(/\s+/g, "_")}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setDownloadingCertificate(false);
+      } catch (err) {
+        console.error("Certificate builder error:", err);
+        setDownloadingCertificate(false);
+      }
+    }, 1200);
+  };
+
   const drawFallbackSilhouette = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => {
     const slGrad = ctx.createLinearGradient(x, y, x, y + h);
     slGrad.addColorStop(0, "#F0F9FF"); // Light Blue base
@@ -1550,11 +1725,15 @@ export default function UserDashboard({
           <div className="lg:col-span-1 space-y-6 text-left">
             
             {/* Nav Menu */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-1.5">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-1.5 shadow-xs">
               {[
                 { tab: "overview", label: "Citizen Hub", icon: User },
+                { tab: "payment", label: "Verification Desk", icon: CheckCircle2 },
                 { tab: "exam", label: "Examination Center", icon: Award },
+                { tab: "download_application", label: "Download Application", icon: FileText },
+                { tab: "download_result", label: "Download Exam Result", icon: Download },
                 { tab: "withdrawal", label: "Withdrawal Desk", icon: Banknote },
+                { tab: "grant_id", label: "APC Grant ID", icon: CreditCard },
                 { tab: "referrals", label: "Referral Center", icon: TrendingUp },
                 { tab: "history", label: "Financial Logs", icon: FileText }
               ].map((item) => {
@@ -1562,17 +1741,18 @@ export default function UserDashboard({
                 return (
                   <button
                     key={item.tab}
+                    id={`sidebar-link-${item.tab}`}
                     onClick={() => {
                       setActiveTab(item.tab as any);
                       setWithdrawalError(null);
                     }}
-                    className={`w-full flex items-center space-x-3.5 px-4 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-[11px] font-bold transition-all ${
                       activeTab === item.tab
-                        ? "bg-[#008751] font-black text-white shadow"
-                        : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                        ? "bg-[#008751] font-black text-white shadow-sm"
+                        : "text-slate-505 hover:text-slate-800 hover:bg-slate-50"
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-3.5 h-3.5" />
                     <span>{item.label}</span>
                   </button>
                 );
@@ -3018,7 +3198,7 @@ export default function UserDashboard({
                 </motion.div>
               )}
 
-              {/* TAB 2: ACTIVE ID CARD PAYMENT PORTAL */}
+                            {/* TAB 2: ACTIVE ID CARD PAYMENT PORTAL */}
               {activeTab === "payment" && (
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
@@ -3026,509 +3206,573 @@ export default function UserDashboard({
                   exit={{ opacity: 0, y: -15 }}
                   className="space-y-6 text-left"
                 >
-                  
                   {currentUser.membershipStatus === "paid" ? (
-                    <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center space-y-4 shadow-sm">
-                      <div className="w-12 h-12 bg-[#008751]/10 rounded-full flex items-center justify-center text-[#008751] mx-auto border border-[#008751]/20">
-                        <CheckCircle2 className="w-6 h-6" />
+                    <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-5 shadow-sm max-w-lg mx-auto">
+                      <div className="w-14 h-14 bg-[#008751]/10 rounded-full flex items-center justify-center text-[#008751] mx-auto border border-[#008751]/20 shadow-xs">
+                        <CheckCircle2 className="w-7 h-7" />
                       </div>
-                      <h3 className="text-lg font-bold text-slate-900">Payment Verified successfully!</h3>
-                      <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                        Your central APC card is fully active. Member ID: <strong>{currentUser.membershipId}</strong>. You are cleared to initiate immediate bank cashouts.
+                      <div className="space-y-1">
+                        <h3 className="text-lg font-black text-slate-900 uppercase">Payment Verified Successfully!</h3>
+                        <p className="text-xs text-slate-500">Member ID Code: <strong className="font-mono text-emerald-700">{currentUser.membershipId}</strong></p>
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto font-sans">
+                        Your direct bank transfer of <strong className="text-[#008751]">₦{currentUser.membershipFee.toLocaleString()}</strong> has been reviewed and cleared by the Central Federal Settlement Registry. You have full system privileges.
                       </p>
                       <button
                         onClick={() => setActiveTab("overview")}
-                        className="bg-[#008751] hover:bg-[#007345] text-white font-bold py-2 px-5 rounded-lg text-xs cursor-pointer"
+                        className="bg-[#008751] hover:bg-[#007345] text-white font-bold py-2.5 px-6 rounded-xl text-xs uppercase tracking-wider cursor-pointer"
                       >
                         Return to Hub
                       </button>
                     </div>
+                  ) : currentUser.membershipStatus === "pending" ? (
+                    <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center space-y-5 shadow-sm max-w-lg mx-auto">
+                      <div className="w-14 h-14 bg-amber-500/10 rounded-full flex items-center justify-center text-amber-600 mx-auto border border-amber-500/20 shadow-xs">
+                        <RefreshCw className="w-6 h-6 animate-spin text-amber-500" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="text-lg font-black text-slate-900 uppercase">Verification Pending Audit</h3>
+                        <p className="text-[10px] text-slate-400 font-mono">STATUS CODE: BATCH_MEMBERSHIP_PENDING</p>
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto font-sans">
+                        Your verification proof has been registered under account name: <strong className="text-slate-800">"{currentUser.transferAccountName}"</strong>. Safe audit is currently confirming settlement on the Federal Providus interface ledger.
+                      </p>
+                      <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-[10.5px] text-amber-800 leading-relaxed font-sans max-w-sm mx-auto text-left">
+                        <strong>⚠️ Estimated clearance time: 30 minutes.</strong> Once confirmed, you will immediately be granted access to proceed with your national examination.
+                      </div>
+                      <button
+                        onClick={() => setActiveTab("overview")}
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-5 rounded-lg text-xs cursor-pointer w-full"
+                      >
+                        Go to Citizen Hub
+                      </button>
+                    </div>
                   ) : (
-                    // PAYMENT FORM SIMULATING FLUTTERWAVE GATEWAY
-                    <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+                    /* DIRECT BANK TRANSFER PORTAL */
+                    <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm max-w-2xl mx-auto">
                       
-                      {/* Paystack/Flutterwave visual header */}
-                      <div className="bg-slate-50 px-6 py-5 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      {/* Gateway visual header */}
+                      <div className="bg-slate-900 px-6 py-5 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-white">
                         <div className="flex items-center space-x-2.5">
-                          <div className="w-7 h-7 bg-[#008751] rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0">
+                          <div className="w-8 h-8 bg-[#008751] rounded-full flex items-center justify-center text-[10px] font-black text-white shrink-0">
                             P
                           </div>
                           <div>
                             <div className="flex items-center space-x-2">
-                              <h4 className="font-extrabold text-sm text-slate-900 tracking-tight">APC SECURE PAYMENT GATEWAY</h4>
-                              <span className="bg-emerald-100 text-[#008751] text-[8px] font-black px-1.5 py-0.5 rounded-full border border-emerald-300 animate-pulse">
-                                ● REAL-TIME ACTIVE
+                              <h4 className="font-extrabold text-xs text-white tracking-wider uppercase">Direct Bank Settlement Desk</h4>
+                              <span className="bg-emerald-500/20 text-emerald-400 text-[8px] font-black px-1.5 py-0.5 rounded-full border border-emerald-500/30">
+                                SECURE LINK
                               </span>
                             </div>
-                            <p className="text-[9px] text-slate-500 font-mono">Secured Online Settlement powered by Paystack POP Engine</p>
+                            <p className="text-[9px] text-slate-400 font-mono uppercase tracking-wide">Federal Central Payments & Proctor Settlement</p>
                           </div>
                         </div>
                         <div className="text-left sm:text-right font-mono text-xs">
-                          <span className="text-slate-500 block text-[9px] uppercase font-sans">Verification Amount Due</span>
-                          <span className="font-black text-[#008751] text-sm">₦{currentUser.membershipFee.toLocaleString()}</span>
+                          <span className="text-slate-400 block text-[8px] uppercase font-sans">Payment Required</span>
+                          <span className="font-black text-emerald-400 text-sm">₦{currentUser.membershipFee.toLocaleString()}</span>
                         </div>
                       </div>
 
-                      {/* Active Gateway Selection Toggles with prominence on Paystack */}
-                      <div className="px-6 pt-5 grid grid-cols-2 gap-3 bg-slate-50 border-b border-slate-200">
-                        <button
-                          type="button"
-                          onClick={() => setUseRealPaystack(true)}
-                          className={`pb-3 text-[11px] font-extrabold uppercase tracking-tight font-sans text-center border-b-2 transition-all cursor-pointer relative ${
-                            useRealPaystack 
-                              ? "border-[#008751] text-[#008751]" 
-                              : "border-transparent text-slate-400 hover:text-slate-650"
-                          }`}
-                        >
-                          ⚡ Paystack SDK (Active)
-                          <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#008751] text-white text-[7px] font-bold px-1.5 py-0.2 rounded-full scale-90">
-                            OFFICIAL
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setUseRealPaystack(false)}
-                          className={`pb-3 text-[11px] font-extrabold uppercase tracking-tight font-sans text-center border-b-2 transition-all cursor-pointer ${
-                            !useRealPaystack 
-                              ? "border-[#008751] text-[#008751]" 
-                              : "border-transparent text-slate-400 hover:text-slate-650"
-                          }`}
-                        >
-                          🛠️ Sandbox Simulator
-                        </button>
-                      </div>
+                      {/* Informational Alerts */}
+                      <div className="p-6 sm:p-8 space-y-6 font-sans">
+                        <div className="bg-emerald-500/[0.02] border border-emerald-500/10 rounded-2xl p-5 text-slate-600 leading-relaxed space-y-3">
+                          <h5 className="font-bold text-xs text-slate-900 uppercase tracking-tight">Payment Instructions:</h5>
+                          <p className="text-[11px]">
+                            To activate your digital APC membership ID and clear your proctor exam profile, make a direct transfer of <strong className="text-[#008751]">₦{currentUser.membershipFee.toLocaleString()}</strong> to the official secure Providus Bank settlement account index below.
+                          </p>
+                        </div>
 
-                      {/* Payment Method Selector Grid - Visible only in Simulator Mode */}
-                      {!useRealPaystack && (
-                        <div className="p-3 bg-slate-50 border-b border-slate-200 animate-fade-in">
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-bold text-[10px] md:text-xs">
-                            {[
-                              { id: "card", label: "Debit Card", icon: CreditCard },
-                              { id: "bank_transfer", label: "Bank Transfer", icon: RefreshCw },
-                              { id: "ussd", label: "USSD Code", icon: Smartphone },
-                              { id: "wallet", label: "Digital Wallet", icon: Award }
-                            ].map((m) => {
-                              const Icon = m.icon;
-                              const selected = paymentMethod === m.id;
-                              return (
-                                <button
-                                  key={m.id}
-                                  type="button"
-                                  onClick={() => setPaymentMethod(m.id as any)}
-                                  className={`py-2.5 px-2 flex flex-col sm:flex-row items-center justify-center gap-2 rounded-xl transition-all cursor-pointer border ${
-                                    selected 
-                                      ? "bg-[#008751] text-white border-[#008751] shadow-sm font-extrabold" 
-                                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
-                                  }`}
-                                  style={{ minHeight: "44px" }}
+                        {/* HIGH VISIBILITY CREDENTIAL INDEX */}
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 font-mono text-xs">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-[8.5px] text-slate-400 uppercase font-bold tracking-wider">designated bank</p>
+                              <p className="text-slate-850 font-black text-xs uppercase font-sans mt-0.5">Providus Bank PLC</p>
+                            </div>
+                            <div>
+                              <p className="text-[8.5px] text-slate-400 uppercase font-bold tracking-wider">account number</p>
+                              <div className="flex items-center space-x-2 mt-0.5">
+                                <p className="text-[#008751] font-black text-sm tracking-wider select-all">9047192837</p>
+                                <button 
+                                  type="button" 
+                                  onClick={() => navigator.clipboard.writeText("9047192837")}
+                                  className="text-slate-450 hover:text-slate-800 cursor-pointer p-1 bg-white hover:bg-slate-100 rounded border border-slate-200 transition-colors"
+                                  title="Copy Account Number"
                                 >
-                                  <Icon className={`w-3.5 h-3.5 ${selected ? "text-white" : "text-[#008751]"}`} />
-                                  <span className="tracking-tight">{m.label}</span>
+                                  <Copy className="w-3 h-3" />
                                 </button>
-                              );
-                            })}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-[8.5px] text-slate-400 uppercase font-bold tracking-wider">recipient holding name</p>
+                              <p className="text-slate-800 font-extrabold text-[10px] font-sans uppercase mt-0.5">APC GRANTS CENTRAL SETTLEMENT</p>
+                            </div>
+                            <div>
+                              <p className="text-[8.5px] text-slate-400 uppercase font-bold tracking-wider">transfer purpose index</p>
+                              <p className="text-amber-705 font-black tracking-wider text-[10px] uppercase mt-0.5">REF-APC-PROCTOR-{currentUser.fullName.split(" ")[0].toUpperCase()}</p>
+                            </div>
                           </div>
                         </div>
-                      )}
 
-                      {/* Dynamic Gateway Views inside portal */}
-                      <div className="p-6 sm:p-8 text-xs font-sans bg-white">
-                        
-                        {paymentSuccess ? (
-                          <div className="py-6 text-center space-y-6 bg-white animate-fade-in max-w-md mx-auto">
-                            <div className="w-14 h-14 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-600 mx-auto border border-emerald-500/20 shadow-sm relative">
-                              <CheckCircle2 className="w-8 h-8 animate-bounce" />
-                              <span className="absolute top-0 right-0 p-1 bg-emerald-500 text-white rounded-full text-[6px] font-bold">100%</span>
-                            </div>
-                            
-                            <div className="space-y-1">
-                              <h4 className="text-base font-black text-slate-900 tracking-tight">Identity Token Payment Settled</h4>
-                              <p className="text-[10px] text-slate-500 font-mono">ID CARD STATUS: ACTIVE / PROVISIONED</p>
-                            </div>
-
-                            {/* Federal Transaction Receipt Container */}
-                            <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-4 text-left font-mono text-[10px] space-y-2.5 relative">
-                              <div className="absolute top-2 right-2 flex space-x-0.5 opacity-30">
-                                <div className="w-1 h-3 bg-slate-900" />
-                                <div className="w-0.5 h-3 bg-slate-900" />
-                                <div className="w-1.5 h-3 bg-slate-900" />
-                                <div className="w-0.5 h-3 bg-slate-900" />
-                              </div>
-
-                              <div className="border-b border-dashed border-slate-200 pb-2 flex justify-between uppercase">
-                                <span className="text-slate-400">Merchant:</span>
-                                <span className="text-slate-800 font-semibold">APC Federal Settlement</span>
-                              </div>
-                              
-                              <div className="flex justify-between">
-                                <span className="text-slate-400">Payer Name:</span>
-                                <span className="text-slate-800 font-bold uppercase">{currentUser.fullName}</span>
-                              </div>
-                              
-                              <div className="flex justify-between">
-                                <span className="text-slate-400">Reference No:</span>
-                                <span className="text-emerald-700 font-bold select-all tracking-wider">{latestPaymentRef || "REF-APC-GEN7764"}</span>
-                              </div>
-
-                              <div className="flex justify-between">
-                                <span className="text-slate-400">Payment channel:</span>
-                                <span className="text-slate-800 uppercase font-bold">{useRealPaystack ? "Paystack SDK Gateway" : `${paymentMethod.replace("_", " ")} Simulator`}</span>
-                              </div>
-
-                              <div className="flex justify-between">
-                                <span className="text-slate-400">Settled On:</span>
-                                <span className="text-slate-800 font-bold">{latestPaymentTime || new Date().toLocaleString()}</span>
-                              </div>
-
-                              <div className="border-t border-dashed border-slate-200 pt-2.5 flex justify-between text-xs font-bold font-mono">
-                                <span className="text-slate-600">Total Cleared:</span>
-                                <span className="text-emerald-600 font-extrabold text-[#008751]">₦{currentUser.membershipFee.toLocaleString()}</span>
-                              </div>
-                            </div>
-
-                            <p className="text-[10px] text-slate-400 leading-normal bg-amber-500/5 px-2 py-1.5 border border-amber-500/10 rounded-lg max-w-xs mx-auto">
-                              ⚠️ Your membership card is ready. Secure system is returning you in a moment to complete automatic activation...
+                        {/* SUBMISSION FORM */}
+                        <form onSubmit={handleValidatePaymentTransfers} className="space-y-4 text-xs">
+                          <div className="space-y-1.5">
+                            <label className="block text-[10px] text-slate-600 font-bold uppercase tracking-wider mb-0.5 font-mono">
+                              Sender's Bank Account Name (Used for Transfer) <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={senderAccountName}
+                              onChange={(e) => setSenderAccountName(e.target.value)}
+                              placeholder="e.g. Aliko Muhammadu Dangote"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-slate-850 font-sans focus:outline-none focus:border-[#008751] focus:bg-white placeholder-slate-400 shadow-inner"
+                              style={{ minHeight: "44px" }}
+                            />
+                            <p className="text-[9.5px] text-slate-450 italic">
+                              Input the exact account name displayed on your commercial debit application to facilitate rapid ledger approval.
                             </p>
                           </div>
-                        ) : useRealPaystack ? (
-                          /* REAL INTERACTIVE PAYSTACK CHECKOUT GATEWAY */
-                          <div className="space-y-6 text-left max-w-md mx-auto py-2 font-sans animate-fade-in">
-                            <div className="bg-emerald-500/[0.02] border border-emerald-500/10 rounded-2xl p-5 space-y-4">
-                              <div className="flex items-start space-x-3">
-                                <div className="p-2.5 bg-[#008751]/10 text-emerald-600 rounded-xl border border-emerald-500/20 mt-0.5 shrink-0">
-                                  <ShieldCheck className="w-5 h-5 text-[#008751]" />
-                                </div>
-                                <div className="space-y-1">
-                                  <h4 className="font-extrabold text-slate-900 uppercase text-xs tracking-tight">Direct Paystack Client Settlement</h4>
-                                  <p className="text-[11px] text-slate-500 leading-normal">
-                                    Initiates the official secure checkout widget. Paystack allows cleared settlements through multiple methods: MasterCard, Visa, USSD, and secure commercial bank channels.
-                                  </p>
-                                </div>
-                              </div>
 
-                              <div className="border-t border-slate-150 pt-4 space-y-4 font-sans">
-                                <div>
-                                  <label className="block text-[9px] text-slate-500 font-bold uppercase font-mono mb-1">
-                                    Integration Diagnostics
-                                  </label>
-                                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[10px] space-y-2 font-mono">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-slate-400">Paystack SDK State:</span>
-                                      {paystackSdkLoaded ? (
-                                        <span className="bg-emerald-100 text-[#008751] px-1.5 py-0.5 font-bold rounded text-[8.5px] border border-emerald-200">
-                                          ✓ ACTIVE LOADED
-                                        </span>
-                                      ) : (
-                                        <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 font-bold rounded text-[8.5px] animate-pulse">
-                                          LOADING SDK...
-                                        </span>
-                                      )}
+                          {/* DRAG & DROP PREMIUM FILE SELECTOR */}
+                          <div className="space-y-1.5">
+                            <label className="block text-[10px] text-slate-605 font-bold uppercase tracking-wider mb-1 font-mono">
+                              Upload Bank Payment Transfer Receipt <span className="text-red-500">*</span>
+                            </label>
+                            
+                            <div 
+                              onDragEnter={handleDrag}
+                              onDragOver={handleDrag}
+                              onDragLeave={handleDrag}
+                              onDrop={handleDrop}
+                              className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all ${
+                                dragActive 
+                                  ? "border-[#008751] bg-[#008751]/5" 
+                                  : receiptImage 
+                                    ? "border-emerald-300 bg-emerald-500/[0.01]" 
+                                    : "border-slate-300 hover:border-[#008751] bg-slate-50 hover:bg-slate-500/[0.01]"
+                              }`}
+                            >
+                              <input
+                                type="file"
+                                id="receipt-upload"
+                                accept="image/*,.pdf"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                      setReceiptImage(reader.result);
+                                      setReceiptFileName(file.name);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                              />
+                              <label htmlFor="receipt-upload" className="cursor-pointer space-y-2 block w-full text-center">
+                                {receiptImage ? (
+                                  <div className="space-y-3">
+                                    <div className="w-12 h-12 bg-emerald-100 text-[#008751] rounded-full flex items-center justify-center mx-auto border border-emerald-202">
+                                      <Image className="w-5 h-5" />
                                     </div>
-
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-slate-400">Backoffice Admin Key:</span>
-                                      {paystackPublicKey ? (
-                                        <span className="bg-emerald-100 text-teal-800 px-1.5 py-0.5 font-bold rounded text-[8.5px] border border-teal-200">
-                                          ✓ SET (SAVED)
-                                        </span>
-                                      ) : (
-                                        <span className="bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded text-[8.5px]">
-                                          NOT CONFIGURED
-                                        </span>
-                                      )}
+                                    <div>
+                                      <p className="text-xs font-bold text-slate-800 line-clamp-1">{receiptFileName}</p>
+                                      <p className="text-[10px] text-[#008751] font-semibold mt-0.5">✓ Transfer Slip Attached Successfully</p>
                                     </div>
-
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-slate-400">Env Variable Key:</span>
-                                      {(import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY ? (
-                                        <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 font-bold rounded text-[8.5px]">
-                                          ✓ DETECTED (API SECURE)
-                                        </span>
-                                      ) : (
-                                        <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 font-bold rounded text-[8.5px]">
-                                          MOCK FALLBACK WORKING
-                                        </span>
-                                      )}
-                                    </div>
-
-                                    <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 mt-1 font-sans">
-                                      <span className="font-semibold text-slate-600 font-mono text-[9px] uppercase">Active Checkout Key:</span>
-                                      <span className="text-[#008751] font-extrabold text-[10px] uppercase">
-                                        {paystackCustomKey.trim() 
-                                          ? "⚡ Temporary Override Key" 
-                                          : paystackPublicKey.trim() 
-                                            ? "🏛️ Saved Admin Platform Key" 
-                                            : (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY 
-                                              ? "🔒 Global Environment Key" 
-                                              : "🧪 Default Sandbox Sandbox Key"}
-                                      </span>
-                                    </div>
-
-                                    <p className="text-[9.5px] text-slate-400 leading-normal font-sans pt-1">
-                                      {paystackCustomKey.trim() 
-                                        ? "Your custom overriding key is loaded for this payment."
-                                        : paystackPublicKey.trim() 
-                                          ? "Checkout will settle into the platform's Admin-configured account." 
-                                          : (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY 
-                                            ? "Checkout will settle through the VITE_PAYSTACK_PUBLIC_KEY env variable." 
-                                            : "No official key is set yet. We are automatically falling back to Paystack's official secure sandbox test environment with zero setup."}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div>
-                                  <div className="flex justify-between items-center mb-1">
-                                    <label className="block text-[9.5px] text-slate-600 font-bold uppercase font-mono">
-                                      Temporary Public Key
-                                    </label>
-                                    <span className="text-[8px] text-slate-400 font-sans italic hover:underline cursor-help">
-                                      Optional for Dev sandbox
+                                    <span className="inline-block text-[9px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded-md border border-slate-201 transition-all">
+                                      Replace Receipt File
                                     </span>
                                   </div>
-                                  <input
-                                    type="text"
-                                    value={paystackCustomKey}
-                                    onChange={(e) => setPaystackCustomKey(e.target.value.trim())}
-                                    placeholder="e.g. pk_test_..."
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-slate-800 font-mono text-[11px] focus:outline-none focus:border-[#008751] focus:bg-white placeholder-slate-400 shadow-inner"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-
-                            {paystackError && (
-                              <div className="text-[10px] text-red-600 font-bold leading-relaxed bg-red-50/80 px-3.5 py-2.5 border border-red-200 rounded-xl font-mono">
-                                <p className="font-extrabold uppercase mb-0.5">⚠️ Transact-Error:</p>
-                                <p className="font-normal">{paystackError}</p>
-                              </div>
-                            )}
-
-                            <button
-                              type="button"
-                              onClick={handlePaystackWebCheckout}
-                              disabled={paymentLoading}
-                              className="w-full flex items-center justify-center space-x-2 bg-[#008751] hover:bg-[#007345] text-white font-black py-4 rounded-xl disabled:opacity-50 cursor-pointer text-xs uppercase tracking-wider shadow-sm transition-all"
-                            >
-                              {paymentLoading ? (
-                                <span className="flex items-center space-x-2">
-                                  <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                                  <span>Authorizing Paystack Gateway...</span>
-                                </span>
-                              ) : (
-                                <span className="flex items-center space-x-1.5">
-                                  <CreditCard className="w-4 h-4 mr-0.5" />
-                                  <span>Pay ₦{currentUser.membershipFee.toLocaleString()} via Paystack Pop</span>
-                                </span>
-                              )}
-                            </button>
-
-                            <div className="text-center font-mono text-[9px] text-slate-400 uppercase tracking-widest pt-1 flex items-center justify-center space-x-1.5">
-                              <ShieldCheck className="w-3.5 h-3.5 text-[#008751]" />
-                              <span>Secured powered by Paystack POP technology</span>
-                            </div>
-                          </div>
-                        ) : (
-                          /* SIMULATED GATEWAYS */
-                          <form onSubmit={handleProcessPayment} className="space-y-5 text-left bg-white text-xs font-sans animate-fade-in">
-                            
-                            {/* CARD SUBMETHOD */}
-                            {paymentMethod === "card" && (
-                              <div className="space-y-4 font-sans">
-                                <div>
-                                  <label className="block text-slate-600 font-bold uppercase tracking-wider mb-1 font-mono">
-                                    Card Number (16 Digits)
-                                  </label>
-                                  <input
-                                    type="text"
-                                    required
-                                    maxLength={19}
-                                    value={cardNumber}
-                                    onChange={(e) => {
-                                      // Formatting cards spacing automatically
-                                      const val = e.target.value.replace(/\D/g, "");
-                                      const spacedVal = val.replace(/(.{4})/g, "$1 ").trim();
-                                      setCardNumber(spacedVal);
-                                    }}
-                                    placeholder="5399 4812 9012 3844"
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-slate-800 focus:outline-none focus:border-[#008751] focus:bg-white font-mono text-sm shadow-inner"
-                                  />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <label className="block text-slate-600 font-bold uppercase tracking-wider mb-1 font-mono">
-                                      Expiry Date
-                                    </label>
-                                    <input
-                                      type="text"
-                                      required
-                                      maxLength={5}
-                                      value={cardExpiry}
-                                      onChange={(e) => {
-                                        const val = e.target.value.replace(/\D/g, "");
-                                        if (val.length >= 2) {
-                                          setCardExpiry(val.substring(0, 2) + "/" + val.substring(2, 4));
-                                        } else {
-                                          setCardExpiry(val);
-                                        }
-                                      }}
-                                      placeholder="MM/YY"
-                                      className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-slate-800 focus:outline-none focus:border-[#008751] focus:bg-white font-mono text-sm shadow-inner"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="block text-slate-600 font-bold uppercase tracking-wider mb-1 font-mono">
-                                      CVV Code (3 Digits)
-                                    </label>
-                                    <input
-                                      type="password"
-                                      required
-                                      maxLength={3}
-                                      value={cardCvv}
-                                      onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, ""))}
-                                      placeholder="901"
-                                      className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-slate-800 focus:outline-none focus:border-[#008751] focus:bg-white font-mono text-sm shadow-inner"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* BANK TRANSFER SUBMETHOD */}
-                            {paymentMethod === "bank_transfer" && (
-                              <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4 font-mono text-[11px]">
-                                <div className="space-y-1.5 leading-relaxed text-slate-600">
-                                  <p>To verify via Direct Bank transfer, send the exact sum of <strong>₦{currentUser.membershipFee.toLocaleString()}</strong> to the designated Providus Bank settlement account below:</p>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-200 pt-4 leading-normal">
-                                  <div>
-                                    <p className="text-[9px] text-slate-500 font-bold uppercase">BANK NAME</p>
-                                    <p className="text-slate-800 font-black text-xs uppercase font-sans">Providus Bank PLC</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[9px] text-slate-500 font-bold uppercase font-mono">ACCOUNT NUMBER</p>
-                                    <div className="flex items-center space-x-2">
-                                      <p className="text-[#008751] font-black text-sm tracking-wider">1029482910</p>
-                                      <button 
-                                        type="button" 
-                                        onClick={() => navigator.clipboard.writeText("1029482910")}
-                                        className="text-slate-500 hover:text-slate-850 cursor-pointer"
-                                      >
-                                        <Copy className="w-3 h-3" />
-                                      </button>
+                                ) : (
+                                  <div className="space-y-2">
+                                    <div className="w-10 h-10 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+                                      <Upload className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-bold text-slate-700">Drag & drop your transfer receipt here, or <span className="text-[#008751] underline">browse</span></p>
+                                      <p className="text-[9px] text-slate-404 mt-1 font-mono">Accepts JPG, PNG images or transaction screenshots</p>
                                     </div>
                                   </div>
-                                  <div>
-                                    <p className="text-[9px] text-slate-500 font-bold uppercase">ACCOUNT HOLDER NAME</p>
-                                    <p className="text-slate-800 font-extrabold text-[10px] font-sans">APC GRANTS CENTRAL SETTLEMENT</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-[9px] text-slate-500 font-bold uppercase">TRANSACTION REFERENCE</p>
-                                    <p className="text-amber-700 font-black tracking-widest text-[10.5px]">REF-APC-DEMO-{currentUser.fullName.split(" ")[0].toUpperCase()}</p>
-                                  </div>
-                                </div>
-
-                                <p className="text-[9.5px] text-slate-400 italic border-t border-slate-200 pt-3 font-sans">
-                                  * Once your commercial bank reports successful settlement, click the button below to authorize immediate central verification mapping.
-                                </p>
-                              </div>
-                            )}
-
-                            {/* USSD DIAL CODE SUBMETHOD */}
-                            {paymentMethod === "ussd" && (
-                              <div className="space-y-4">
-                                <div>
-                                  <label className="block text-slate-600 font-bold uppercase tracking-wider mb-2 font-mono">
-                                    Select Your Mobile Bank Provider
-                                  </label>
-                                  <select
-                                    required
-                                    value={ussdBank}
-                                    onChange={(e) => setUssdBank(e.target.value)}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3 text-slate-700 focus:outline-none focus:border-[#008751] focus:bg-white cursor-pointer"
-                                  >
-                                    <option value="">-- Choose Provider Bank --</option>
-                                    <option value="gtb">Guaranty Trust Bank (GTB) (*737#)</option>
-                                    <option value="zenith">Zenith Bank (*966#)</option>
-                                    <option value="access">Access Bank (*901#)</option>
-                                    <option value="uba">United Bank for Africa (UBA) (*919#)</option>
-                                    <option value="firstbank">First Bank of Nigeria (*894#)</option>
-                                  </select>
-                                </div>
-
-                                {ussdBank && (
-                                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 font-mono text-center space-y-1.5 font-bold">
-                                    <p className="text-[10px] text-slate-500">Dial the code below on your registered mobile lines to clear payment:</p>
-                                    <p className="text-lg font-black text-[#008751] tracking-wider">
-                                      {ussdBank === "gtb" && `*737*1*2*1029482910*${currentUser.membershipFee}#`}
-                                      {ussdBank === "zenith" && `*966*3*${currentUser.membershipFee}*1029482910#`}
-                                      {ussdBank === "access" && `*901*2*1029482910*${currentUser.membershipFee}#`}
-                                      {ussdBank === "uba" && `*919*8*1029482910*${currentUser.membershipFee}#`}
-                                      {ussdBank === "firstbank" && `*894*${currentUser.membershipFee}*1029482910#`}
-                                    </p>
-                                  </div>
                                 )}
-                              </div>
-                            )}
+                              </label>
+                            </div>
+                          </div>
 
-                            {/* MOBILE DIGITAL WALLET */}
-                            {paymentMethod === "wallet" && (
-                              <div className="space-y-4 text-left">
-                                <div>
-                                  <label className="block text-slate-600 font-bold uppercase tracking-wider mb-1.5 font-mono">
-                                    Verified OPay / Paga Phone Number
-                                  </label>
-                                  <input
-                                    type="text"
-                                    required
-                                    value={mobileWalletNumber}
-                                    onChange={(e) => setMobileWalletNumber(e.target.value.replace(/\D/g, ""))}
-                                    placeholder="e.g. 08067890123"
-                                    className="w-full bg-slate-50 border border-[#slate-200] rounded-lg py-2.5 px-3 text-slate-800 focus:outline-none focus:border-[#008751] focus:bg-white font-mono text-sm shadow-inner"
-                                  />
-                                </div>
-                                <p className="text-[10px] text-slate-500">A payment push check will be transmitted directly to your mobile wallet provider app.</p>
-                              </div>
-                            )}
-
-                            {/* Secure action button */}
+                          {/* VALIDATE ACTION BUTTON */}
+                          <div className="pt-4">
                             <button
                               type="submit"
-                              disabled={paymentLoading}
-                              className="w-full mt-4 flex items-center justify-center space-x-2 bg-[#008751] hover:bg-[#007345] text-white font-black py-3.5 rounded-xl disabled:opacity-50 cursor-pointer text-xs uppercase tracking-wide shadow-sm"
+                              disabled={validationLoading}
+                              className="w-full flex items-center justify-center space-x-2 bg-[#008751] hover:bg-[#007345] text-white font-black py-4 rounded-xl disabled:opacity-50 cursor-pointer text-xs uppercase tracking-wider shadow-sm transition-all active:scale-98"
+                              style={{ minHeight: "44px" }}
                             >
-                              {paymentLoading ? (
+                              {validationLoading ? (
                                 <span className="flex items-center space-x-2">
-                                  <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                                  <span>Authorizing Security Settlement...</span>
+                                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                                  <span>Authorizing Providus Settlement API...</span>
                                 </span>
                               ) : (
-                                <span>
-                                  {paymentMethod === "bank_transfer" ? "Authorize Bank Transfer Verification" : `Complete Security Verification (₦${currentUser.membershipFee.toLocaleString()})`}
+                                <span className="flex items-center space-x-1.5 font-bold">
+                                  <ShieldCheck className="w-4 h-4 mr-0.5 text-emerald-100" />
+                                  <span>Validate Payment Transfer</span>
                                 </span>
                               )}
                             </button>
                             
-                            <div className="text-center font-mono text-[9px] text-slate-400 uppercase tracking-widest pt-2 flex items-center justify-center space-x-1.5">
+                            <div className="text-center font-mono text-[9px] text-slate-404 uppercase tracking-widest pt-2.5 flex items-center justify-center space-x-1">
                               <ShieldCheck className="w-3.5 h-3.5 text-[#008751]" />
-                              <span>256-bit bank level SSL secure socket layers</span>
+                              <span>Secured powered by Nigeria Central Settlement Pop Engine</span>
                             </div>
-
-                          </form>
-                        )}
-                        
+                          </div>
+                        </form>
                       </div>
                     </div>
-
                   )}
-
                 </motion.div>
               )}
 
+              {/* DOWNLOAD APPLICATION FORM SLIP - INDIVIDUAL PAGE */}
+              {activeTab === "download_application" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  className="space-y-6 text-left"
+                >
+                  <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 shadow-sm space-y-6 max-w-3xl mx-auto">
+                    
+                    <div className="flex flex-col md:flex-row justify-between items-baseline gap-2 border-b border-slate-100 pb-4">
+                      <div>
+                        <h3 className="text-lg font-black text-slate-900 tracking-tight uppercase">Application Form Slip</h3>
+                        <p className="text-[10px] text-slate-500 font-mono">RENEWED HOPE PLATFORM REGISTRATION SLIP</p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={downloadingPdf}
+                        onClick={handleDownloadApplicationPDF}
+                        className="bg-[#008751] hover:bg-[#007345] text-white font-bold px-4.5 py-2 rounded-xl text-xs flex items-center space-x-1.5 shadow-sm hover:shadow transition-all disabled:opacity-50"
+                      >
+                        {downloadingPdf ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                            <span>Building Slip...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-3.5 h-3.5 text-white" />
+                            <span>Download Slip (PNG)</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
 
-              {/* TAB 3: SECURE WITHDRAWAL DRAWER PORTAL */}
+                    {/* Visually polished official application preview frame */}
+                    <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50/50 hover:bg-white transition-all shadow-inner p-6 md:p-8 font-sans space-y-6 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-[#008751]/[0.02] rounded-full pointer-events-none" />
+                      
+                      {/* Top Slip Heading */}
+                      <div className="flex items-center space-x-3 border-b border-dashed border-slate-205 pb-5">
+                        <APCLogo className="w-12 h-12" />
+                        <div>
+                          <h4 className="font-black text-xs text-slate-900 tracking-wide uppercase leading-none">ALL PROGRESSIVES CONGRESS</h4>
+                          <span className="text-[10px] text-[#008751] font-bold uppercase tracking-wider block mt-1.5">RENEWED HOPE NATIONAL SOCIAL GRANT SCHEME INDEX</span>
+                        </div>
+                      </div>
+
+                      {/* Detail Matrix */}
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
+                        {/* Passport */}
+                        <div className="md:col-span-1 flex flex-col items-center">
+                          <div className="w-28 h-32 bg-white border border-slate-300 rounded-xl p-1 overflow-hidden shadow-xs relative">
+                            {currentUser.passportPhoto ? (
+                              <img src={currentUser.passportPhoto} alt="Preview Passport" className="w-full h-full object-cover rounded-lg" />
+                            ) : (
+                              <div className="w-full h-full bg-slate-50 flex flex-col items-center justify-center text-slate-400">
+                                <User className="w-7 h-7 text-slate-300" />
+                                <span className="text-[7.5px] font-bold font-mono text-slate-400 mt-1">NO PHOTO</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Information Grid fields */}
+                        <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3.5 text-[11px] text-slate-600">
+                          <div>
+                            <span className="text-[8.5px] text-slate-400 font-bold block uppercase font-mono tracking-wider">Candidate Reference</span>
+                            <span className="font-extrabold text-slate-900 font-mono text-xs uppercase">APC/FGN/{currentUser.id.substring(0,8).toUpperCase()}</span>
+                          </div>
+                          <div>
+                            <span className="text-[8.5px] text-slate-400 font-bold block uppercase font-mono tracking-wider">National Identity Code (NIN)</span>
+                            <span className="font-extrabold text-[#008751] font-mono text-xs">{currentUser.nin || "UNAVAILABLE"}</span>
+                          </div>
+                          <div>
+                            <span className="text-[8.5px] text-slate-400 font-bold block uppercase font-mono tracking-wider">Full Legal Name</span>
+                            <span className="font-extrabold text-slate-900 capitalize text-xs">{currentUser.fullName}</span>
+                          </div>
+                          <div>
+                            <span className="text-[8.5px] text-slate-400 font-bold block uppercase font-mono tracking-wider">Registered State of Origin</span>
+                            <span className="font-extrabold text-slate-900 text-xs">{currentUser.state} State</span>
+                          </div>
+                          <div>
+                            <span className="text-[8.5px] text-slate-400 font-bold block uppercase font-mono tracking-wider">Designated Grant Tier Bracket</span>
+                            <span className="font-black text-emerald-705 text-xs">₦{currentUser.grantAmount.toLocaleString()} Base Sum</span>
+                          </div>
+                          <div>
+                            <span className="text-[8.5px] text-slate-400 font-bold block uppercase font-mono tracking-wider">Email Index</span>
+                            <span className="font-semibold text-slate-805 text-xs">{currentUser.email}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Barcode representation */}
+                      <div className="border-t border-dashed border-slate-205 pt-5 flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] text-slate-400">
+                        <div className="font-mono text-left space-y-0.5">
+                          <p>DRAFT RECOGNISED: {new Date(currentUser.createdAt).toLocaleDateString()}</p>
+                          <p>SECTOR FILE: ELIGIBILITY_CONFIRMED_OK</p>
+                        </div>
+                        
+                        <div className="text-center font-mono font-medium">
+                          <div className="flex justify-center items-center h-8 space-x-0.5 opacity-40">
+                            <div className="w-0.5 h-full bg-slate-900" />
+                            <div className="w-1.5 h-full bg-slate-900" />
+                            <div className="w-0.5 h-full bg-slate-900" />
+                            <div className="w-2.5 h-full bg-slate-900" />
+                            <div className="w-0.5 h-full bg-slate-900" />
+                            <div className="w-1 h-full bg-slate-900" />
+                          </div>
+                          <span className="text-[9px] text-slate-500 tracking-wider font-semibold block mt-1">*APC-SLIP-{currentUser.id.substring(0,6).toUpperCase()}*</span>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* DOWNLOAD EXAM RESULT CERTIFICATE - INDIVIDUAL PAGE */}
+              {activeTab === "download_result" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  className="space-y-6 text-left"
+                >
+                  <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 shadow-sm space-y-6 max-w-3xl mx-auto">
+                    
+                    <div className="flex flex-col sm:flex-row justify-between items-baseline gap-2 border-b border-slate-100 pb-4">
+                      <div>
+                        <h3 className="text-lg font-black text-slate-900 tracking-tight uppercase font-sans">Exam Clearance Certificate</h3>
+                        <p className="text-[10px] text-slate-500 font-mono">OFFICIAL PROCTOR EXAM SCORE SLIP</p>
+                      </div>
+                      
+                      {currentUser.examScore !== null && (
+                        <button
+                          type="button"
+                          disabled={downloadingCertificate}
+                          onClick={downloadExamCertificatePNG}
+                          className="bg-[#008751] hover:bg-[#007345] text-white font-bold px-4.5 py-2 rounded-xl text-xs flex items-center space-x-1.5 shadow-sm hover:shadow transition-all disabled:opacity-50"
+                        >
+                          {downloadingCertificate ? (
+                            <>
+                              <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                              <span>Generating Stamp Certificate...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Download className="w-3.5 h-3.5 text-white" />
+                              <span>Download Certificate (PNG)</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Certification Condition State */}
+                    {currentUser.examScore === null ? (
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center space-y-4 shadow-inner max-w-md mx-auto font-sans">
+                        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mx-auto">
+                          <Award className="w-6 h-6 text-slate-400" />
+                        </div>
+                        <h4 className="font-bold text-slate-800 text-sm uppercase">No Examination Record Found</h4>
+                        <p className="text-xs text-slate-500 leading-relaxed font-sans">
+                          You haven't completed your Proctor examination yet. Settle your identity verification index and head to the Examination Center first to receive your qualification certificate.
+                        </p>
+                        <button
+                          onClick={() => {
+                            if (currentUser.membershipStatus === "paid") {
+                              setActiveTab("exam");
+                            } else {
+                              setActiveTab("payment");
+                            }
+                          }}
+                          className="bg-[#008751] hover:bg-[#007345] text-white font-bold py-2 px-5 rounded-lg text-xs cursor-pointer shadow-sm"
+                        >
+                          {currentUser.membershipStatus === "paid" ? "Go to Exam Center" : "Settle Verification Fee"}
+                        </button>
+                      </div>
+                    ) : (
+                      /* Elegant Visual Mockup of Awarded Certificate */
+                      <div className="border-4 border-[#008751] bg-[#FCFDFE] rounded-2xl p-6 md:p-8 relative text-center space-y-6 shadow-md shadow-emerald-500/5">
+                        {/* Thin inner gold accent lines */}
+                        <div className="absolute inset-2 border border-amber-500 pointer-events-none" />
+                        
+                        <div className="space-y-1">
+                          <h4 className="font-serif italic text-[#008751]/95 text-xs font-black tracking-widest uppercase">ALL PROGRESSIVES CONGRESS</h4>
+                          <h3 className="font-sans font-black text-xs text-slate-900 tracking-wider">RENEWED HOPE COHORT INTERVENTION PROGRAMME</h3>
+                        </div>
+
+                        <div className="w-full h-px bg-slate-200/60 max-w-sm mx-auto" />
+
+                        <div className="space-y-2">
+                          <p className="font-serif italic text-xs text-slate-500">This official proctor clearing certificate is awarded with honor to:</p>
+                          <h2 className="font-serif text-slate-900 font-extrabold text-xl capitalize leading-tight">{currentUser.fullName}</h2>
+                        </div>
+
+                        <div className="space-y-1 text-slate-600 font-sans text-[11px] leading-relaxed font-medium">
+                          <p>Having cleared direct national social intervention parameters and achieved high ratings in the</p>
+                          <p className="font-bold text-[#008751] uppercase text-[10px] tracking-wide">National APC Grant Proctor Competency Examination Desk</p>
+                        </div>
+
+                        {/* Final score block */}
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl py-3 px-6 inline-block font-sans">
+                          <p className="text-[8.5px] text-[#008751]/80 font-bold tracking-widest uppercase">Certified Exam rating</p>
+                          <p className="text-sm font-black text-emerald-850 font-mono mt-0.5">{currentUser.examScore}% MARKS</p>
+                        </div>
+
+                        {/* Signatures and Seals */}
+                        <div className="flex justify-between items-end pt-4 font-mono text-[9px] text-slate-400">
+                          <div className="text-left leading-normal font-medium">
+                            <p className="font-bold text-slate-700 font-mono">UID: {currentUser.membershipId}</p>
+                            <p>REF NO: SEC-{currentUser.id.substring(0,8).toUpperCase()}</p>
+                          </div>
+
+                          <div className="w-12 h-12 bg-amber-250 text-amber-800 rounded-full flex items-center justify-center border border-amber-400 shadow-md transform rotate-12 shrink-0">
+                            <span className="text-[7.5px] font-black uppercase tracking-tight text-center leading-tight">APC<br/>STAMP</span>
+                          </div>
+
+                          <div className="text-right leading-normal font-medium animate-fade-in font-serif">
+                            <span className="inline-block w-24 border-b border-slate-300 pb-0.5 font-serif italic text-slate-800">Sen. G. Akume</span>
+                            <p className="text-slate-500 font-sans">Social Interventions Registrar</p>
+                          </div>
+                        </div>
+
+                      </div>
+                    )}
+
+                  </div>
+                </motion.div>
+              )}
+
+              {/* VIEW APC MEMBERSHIP GRANT ID CARD - INDIVIDUAL PAGE */}
+              {activeTab === "grant_id" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  className="space-y-6 text-left"
+                >
+                  <div className="bg-white border border-slate-205 rounded-3xl p-6 md:p-8 shadow-sm space-y-6 max-w-2xl mx-auto font-sans">
+                    
+                    <div className="flex flex-col sm:flex-row justify-between items-baseline gap-2 border-b border-slate-100 pb-4">
+                      <div>
+                        <h3 className="text-lg font-black text-slate-900 tracking-tight uppercase font-sans">Grant ID Card Desk</h3>
+                        <p className="text-[10px] text-slate-500 font-mono">NATIONAL CITIZEN IDENTITY REGISTER ID CARD</p>
+                      </div>
+                      
+                      <button
+                        type="button"
+                        disabled={cardDownloading || currentUser.membershipStatus !== "paid"}
+                        onClick={downloadIDCardPNG}
+                        className="bg-[#008751] hover:bg-[#007345] text-white font-bold px-4.5 py-2 rounded-xl text-xs flex items-center space-x-1.5 shadow-sm hover:shadow transition-all disabled:opacity-50"
+                      >
+                        {cardDownloading ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                            <span>Building Card (PNG)...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-3.5 h-3.5 text-white" />
+                            <span>Download Official ID Card</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Constraint warning for ID Card activation status */}
+                    {currentUser.membershipStatus !== "paid" ? (
+                      <div className="bg-amber-500/5 border border-amber-500/15 rounded-2xl p-5 text-center max-w-md mx-auto space-y-3 font-sans">
+                        <h4 className="font-bold text-amber-800 text-xs uppercase font-mono tracking-wide">ID Card Inactive</h4>
+                        <p className="text-[11px] text-slate-605 leading-normal">
+                          Your physical/digital membership card requires verification settlement first. Activating your membership allows central grant payout execution.
+                        </p>
+                        <button
+                          onClick={() => setActiveTab("payment")}
+                          className="bg-[#008751] hover:bg-[#007345] text-white font-extrabold py-2 px-4 rounded-xl text-[11px] uppercase cursor-pointer animate-fade-in"
+                        >
+                          Settle ID Card activation fee
+                        </button>
+                      </div>
+                    ) : (
+                      /* 3D Looking Floating Front Side ID Card Preview */
+                      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-5 text-slate-200 flex flex-col justify-between shadow-xl text-xs relative max-w-lg mx-auto aspect-[1.6/1] border border-slate-705/50">
+                        {/* Background subtle watermark crest */}
+                        <div className="absolute top-4 right-4 w-20 h-20 bg-emerald-500/5 rounded-full pointer-events-none blur-xl" />
+                        
+                        {/* Front Side Header */}
+                        <div className="flex justify-between items-start border-b border-slate-700 pb-3">
+                          <div className="flex items-center space-x-2">
+                            <APCLogo className="w-8 h-8 filter drop-shadow animate-fade-in" />
+                            <div className="text-left font-sans font-medium">
+                              <h4 className="font-black text-[9.5px] uppercase tracking-wide leading-none text-white">ALL PROGRESSIVES CONGRESS</h4>
+                              <p className="text-[7.5px] text-emerald-400 tracking-wider font-mono uppercase font-black block mt-1">NATIONAL SOCIAL GRANT CARD</p>
+                            </div>
+                          </div>
+                          <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[7px] px-1.5 py-0.5 rounded font-mono font-bold uppercase tracking-widest leading-none">
+                            VERIFIED APPROVED
+                          </span>
+                        </div>
+
+                        {/* ID Core Body Matrix */}
+                        <div className="grid grid-cols-12 gap-4 my-2.5 items-center">
+                          {/* Face Passport */}
+                          <div className="col-span-3">
+                            <div className="aspect-[1/1.1] bg-slate-950 border border-slate-700 rounded-lg p-0.5 overflow-hidden shadow-inner">
+                              {currentUser.passportPhoto ? (
+                                <img src={currentUser.passportPhoto} alt="Applicant Passport" className="w-full h-full object-cover rounded-md" />
+                              ) : (
+                                <div className="w-full h-full bg-slate-800 flex flex-col items-center justify-center text-slate-600">
+                                  <User className="w-5 h-5 text-slate-500" />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Profile metadata details */}
+                          <div className="col-span-9 space-y-1.5 font-mono text-[10px] text-left leading-normal font-medium">
+                            <p className="text-white font-bold font-sans text-xs uppercase tracking-tight">{currentUser.fullName}</p>
+                            <p className="text-slate-400"><span className="text-slate-500 block text-[7.5px] uppercase font-sans font-bold">Membership ID</span><span className="text-emerald-400 font-extrabold tracking-wider">{currentUser.membershipId}</span></p>
+                            <p className="text-slate-400"><span className="text-slate-500 block text-[7.5px] uppercase font-sans font-bold">STATE OF Origin</span><span className="text-slate-200 mt-0.5 font-sans font-bold uppercase">{currentUser.state} State</span></p>
+                          </div>
+                        </div>
+
+                        {/* Barcode/Security Footer */}
+                        <div className="border-t border-slate-700 pt-2.5 flex justify-between items-center text-[7.5px] text-slate-500 font-mono font-medium">
+                          <p>ISSUE BATCH: APC_NATIONAL_OCT_INTERVENTION</p>
+                          <div className="flex items-center space-x-1.5 font-mono">
+                            <QrCode className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="tracking-widest font-black select-all text-slate-300 font-mono">SECURE REF: {currentUser.id.substring(0,8).toUpperCase()}</span>
+                          </div>
+                        </div>
+
+                      </div>
+                    )}
+
+                  </div>
+                </motion.div>
+              )}
+{/* TAB 3: SECURE WITHDRAWAL DRAWER PORTAL */}
               {activeTab === "withdrawal" && (
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
