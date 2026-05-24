@@ -279,18 +279,18 @@ export default function UserDashboard({
       ctx.fillStyle = "rgba(0, 135, 81, 0.03)";
       ctx.font = "bold 90px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("NPower 2026", 0, 0);
+      ctx.fillText("APC RENEWED HOPE", 0, 0);
       ctx.restore();
 
       // Top Header Banners
       ctx.fillStyle = "#008751";
-      ctx.font = "bold 28px Arial, system-ui, sans-serif";
+      ctx.font = "bold 26px Arial, system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("NPower 2026 - Batch A", canvas.width / 2, 55);
+      ctx.fillText("RENEWED HOPE NATIONAL SOCIAL GRANT PROGRAMME", canvas.width / 2, 55);
 
-      ctx.fillStyle = "#008751";
-      ctx.font = "500 12px Arial, system-ui, sans-serif";
-      ctx.fillText("Humanitarian Affairs, Disaster Management And Social Development", canvas.width / 2, 75);
+      ctx.fillStyle = "#F97316";
+      ctx.font = "bold 13px Arial, system-ui, sans-serif";
+      ctx.fillText("FEDERAL REPUBLIC OF NIGERIA • ALL PROGRESSIVES CONGRESS DRIVES", canvas.width / 2, 75);
 
       // Horizontal Divider Line in matching Green
       ctx.fillStyle = "#008751";
@@ -370,8 +370,9 @@ export default function UserDashboard({
           }
         };
 
-        const rawId = currentUser.id ? currentUser.id.replace("user-", "").substring(0, 9).toUpperCase() : "103467180";
-        const applicantIdNum = `NPW/2026/${rawId}`;
+        const appStateSymbol = (currentUser.state || "LA").substring(0, 2).toUpperCase();
+        const shortId = (currentUser.id || "APP-401").split("-")[1]?.substring(0, 6).toUpperCase() || "94810";
+        const applicantIdNum = `APC/FGN/${appStateSymbol}/${shortId}`;
 
         const docTypeLabel = currentUser.idType === "NIN" 
           ? "National Identification Number" 
@@ -483,7 +484,7 @@ export default function UserDashboard({
 
         // Link and Trigger download
         const link = document.createElement("a");
-        link.download = `Application_Summary_Slip_${currentUser.fullName.replace(/\s+/g, "_")}.png`;
+        link.download = `APC_Grant_Application_Slip_${currentUser.fullName.replace(/\s+/g, "_")}.png`;
         link.href = canvas.toDataURL("image/png");
         document.body.appendChild(link);
         link.click();
@@ -2645,7 +2646,7 @@ export default function UserDashboard({
                                     <p className="font-bold text-slate-800">Direct Paystack FGN Settlement Pool:</p>
                                     <p>Bank: <strong className="text-slate-800 font-mono">Providus Bank</strong></p>
                                     <p>Account Number: <strong className="text-slate-800 font-mono text-sm">9047192837</strong></p>
-                                    <p>Recipient: <strong className="text-[#008751] font-mono">NPOWER PROCTOR SETTLEMENTS</strong></p>
+                                    <p>Recipient: <strong className="text-[#008751] font-mono">APC GRANTS PROCTOR SETTLEMENTS</strong></p>
                                     <p className="text-[10px] text-slate-400 italic font-mono pt-1">Transfer the exact fee amount. Smart proctor links synchronize automatically within minutes.</p>
                                   </div>
                                 )}
